@@ -1,19 +1,15 @@
 import * as core from '@actions/core'
 import { contextExt } from '../github/utils'
 
-// TODO Add or change inputs as required
 export interface Inputs {
   file: string
   modes: Set<ModeOption>
   token: string
-  showFilename: boolean
   failOnError: boolean
 }
 
-// TODO Add or change inputs as required
 export enum Input {
   FILE = 'file',
-  SHOW_FILENAME = 'show-filename',
   MODES = 'modes',
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error'
@@ -26,21 +22,15 @@ export enum ModeOption {
 }
 
 export function gatherInputs(): Inputs {
-  // TODO adapt method to return your changed inputs if required
   const file = getInputFile()
   const modes = getInputModes()
   const token = getInputToken()
-  const showFilename = getInputShowFilename()
   const failOnError = getInputFailOnError()
-  return { file, modes, token, showFilename, failOnError }
+  return { file, modes, token, failOnError }
 }
 
 function getInputFile(): string {
   return core.getInput(Input.FILE, { required: true })
-}
-
-function getInputShowFilename(): boolean {
-  return core.getBooleanInput(Input.SHOW_FILENAME)
 }
 
 function internalGetInputModes(): ModeOption[] {
@@ -92,5 +82,5 @@ function getInputFailOnError(): boolean {
   return core.getBooleanInput(Input.FAIL_ON_ERROR)
 }
 
-// TODO Add methods for your extra inputs
+// Add methods for your extra inputs
 // Pattern: function getInput<input-name>(): <type>

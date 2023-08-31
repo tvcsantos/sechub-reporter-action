@@ -9,7 +9,7 @@ import { CheckReporter } from '../report/check-reporter'
 import { SummaryReporter } from '../report/summary-reporter'
 import * as core from '@actions/core'
 import { GitHub } from '@actions/github/lib/utils'
-import { KubeconformReportGenerator } from '../report/kubeconform-report-generator'
+import { SecHubReportGenerator } from '../report/sechub-report-generator'
 
 export class ActionOrchestrator {
   private gitHubCheck: GitHubCheck | null = null
@@ -57,10 +57,9 @@ export class ActionOrchestrator {
     this.inputs = inputs
     const reporters = await this.getReporters()
     try {
-      const reportGenerator = KubeconformReportGenerator.getInstance()
+      const reportGenerator = new SecHubReportGenerator(github.context)
       const reportResult = await reportGenerator.generateReport(
-        this.inputs.file,
-        { showFilename: this.inputs.showFilename }
+        this.inputs.file
       )
       for (const reporter of reporters) {
         await reporter.report(reportResult)

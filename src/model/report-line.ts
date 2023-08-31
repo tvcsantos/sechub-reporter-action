@@ -1,8 +1,10 @@
-// TODO change this interface with the details that you want on each report line
 export interface ReportLine {
-  name: string
-  kind: string
-  version: string
-  message: string
-  filename: string
+  severity: string
+  type: string
+  location: string
+  line?: number
+  column?: number
+  source?: string
+  relevantPart?: string
+  cweId?: number
 }
