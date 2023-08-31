@@ -10239,6 +10239,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SecHubReportGenerator = void 0;
 const fs = __importStar(__nccwpck_require__(3292));
 const utils_1 = __nccwpck_require__(3166);
+const utils_2 = __nccwpck_require__(239);
 const HEADER = '| Severity | Type | Location | Relevant part | Source';
 const HEADER_ALIGNMENT = '|-|-|-|-|-|';
 const FILE_ENCODING = 'utf-8';
@@ -10275,6 +10276,14 @@ class SecHubReportGenerator {
             .map(x => x)
             .join(' - '));
     }
+    getSource(secHubFinding) {
+        const source = secHubFinding.code.source;
+        return source ? (0, utils_2.pre)(source) : undefined;
+    }
+    getRelevantPart(secHubFinding) {
+        const relevantPart = secHubFinding.code.relevantPart;
+        return relevantPart ? (0, utils_2.pre)(relevantPart) : undefined;
+    }
     makeReportLine(secHubFinding) {
         // server_url/user/repo/blob/<commit-ref>/path#line
         const linkedLocation = this.getLinkedLocation(secHubFinding);
@@ -10283,8 +10292,8 @@ class SecHubReportGenerator {
             secHubFinding.severity,
             type,
             linkedLocation,
-            secHubFinding.code.relevantPart,
-            secHubFinding.code.source ?? ''
+            this.getRelevantPart(secHubFinding),
+            this.getSource(secHubFinding)
         ]
             .map(x => x ?? '')
             .join(' | ');
@@ -10328,6 +10337,25 @@ class SummaryReporter {
     }
 }
 exports.SummaryReporter = SummaryReporter;
+
+
+/***/ }),
+
+/***/ 239:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.pre = exports.noBreak = void 0;
+function noBreak(s) {
+    return s.replace(/-/g, '&#8209;').replace(/ /g, '&nbsp;');
+}
+exports.noBreak = noBreak;
+function pre(text) {
+    return `<pre>${text}</pre>`;
+}
+exports.pre = pre;
 
 
 /***/ }),

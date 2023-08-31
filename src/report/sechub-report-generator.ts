@@ -4,6 +4,7 @@ import { ReportResult } from '../model/report-result'
 import { ReportGenerator } from './report-generator'
 import { ContextExtensions } from '../github/utils'
 import { Context } from '@actions/github/lib/context'
+import { pre } from '../utils/utils'
 
 const HEADER = '| Severity | Type | Location | Relevant part | Source'
 const HEADER_ALIGNMENT = '|-|-|-|-|-|'
@@ -56,6 +57,16 @@ export class SecHubReportGenerator implements ReportGenerator {
     )
   }
 
+  private getSource(secHubFinding: SecHubFinding): string | undefined {
+    const source = secHubFinding.code.source
+    return source ? pre(source) : undefined
+  }
+
+  private getRelevantPart(secHubFinding: SecHubFinding): string | undefined {
+    const relevantPart = secHubFinding.code.relevantPart
+    return relevantPart ? pre(relevantPart) : undefined
+  }
+
   private makeReportLine(secHubFinding: SecHubFinding): string {
     // server_url/user/repo/blob/<commit-ref>/path#line
     const linkedLocation = this.getLinkedLocation(secHubFinding)
@@ -65,8 +76,8 @@ export class SecHubReportGenerator implements ReportGenerator {
       secHubFinding.severity,
       type,
       linkedLocation,
-      secHubFinding.code.relevantPart,
-      secHubFinding.code.source ?? ''
+      this.getRelevantPart(secHubFinding),
+      this.getSource(secHubFinding)
     ]
       .map(x => x ?? '')
       .join(' | ')
