@@ -7,8 +7,9 @@ const HEADER = '| Severity | Type | Location | Relevant part | Source'
 const HEADER_ALIGNMENT = '|-|-|-|-|-|'
 const FILE_ENCODING = 'utf-8'
 const SUCCESS_COMMENT =
-  '# :white_check_mark: SecHub - We detected some findings on your code base!'
-const FAIL_COMMENT = '# :x: SecHub - No findings detected on your code base!'
+  '# :white_check_mark: SecHub - No findings detected on your code base!'
+const FAIL_COMMENT =
+  '# :x: SecHub - We detected some findings on your code base!'
 
 export class SecHubReportGenerator implements ReportGenerator {
   private constructor() {}
