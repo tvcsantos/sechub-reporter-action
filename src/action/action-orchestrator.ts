@@ -57,7 +57,7 @@ export class ActionOrchestrator {
     this.inputs = inputs
     const reporters = await this.getReporters()
     try {
-      const reportGenerator = SecHubReportGenerator.getInstance()
+      const reportGenerator = new SecHubReportGenerator(github.context)
       const reportResult = await reportGenerator.generateReport(
         this.inputs.file
       )

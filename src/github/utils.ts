@@ -42,6 +42,13 @@ export class ContextExtensions {
     return commitId
   }
 
+  getLinkToFile(filePath: string, line?: number): string {
+    const link = `${this.context.serverUrl}/${this.context.repo.owner}/${
+      this.context.repo.repo
+    }/blob/${this.getCurrentCommitId(false)}/${filePath}`
+    return line !== undefined ? `${link}#L${line}` : link
+  }
+
   static of(context: Context): ContextExtensions {
     return new ContextExtensions(context)
   }

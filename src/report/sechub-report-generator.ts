@@ -2,6 +2,8 @@ import * as fs from 'fs/promises'
 import { SecHubFinding, SecHubReport } from '../model/sechub'
 import { ReportResult } from '../model/report-result'
 import { ReportGenerator } from './report-generator'
+import { ContextExtensions } from '../github/utils'
+import { Context } from '@actions/github/lib/context'
 
 const HEADER = '| Severity | Type | Location | Relevant part | Source'
 const HEADER_ALIGNMENT = '|-|-|-|-|-|'
@@ -10,12 +12,17 @@ const SUCCESS_COMMENT =
   '# :white_check_mark: SecHub - No findings detected on your code base!'
 const FAIL_COMMENT =
   '# :x: SecHub - We detected some findings on your code base!'
+const CWE_LINK = (id: number): string =>
+  `https://cwe.mitre.org/data/definitions/${id}.html`
 
 export class SecHubReportGenerator implements ReportGenerator {
-  private constructor() {}
+  private context: ContextExtensions
 
-  private makeReportLine(secHubFinding: SecHubFinding): string {
-    // server_url/user/repo/blob/<commit-ref>/path#line
+  constructor(context: Context) {
+    this.context = ContextExtensions.of(context)
+  }
+
+  private getLinkedLocation(secHubFinding: SecHubFinding): string {
     const location = [
       secHubFinding.code.location,
       secHubFinding.code.line,
@@ -25,20 +32,44 @@ export class SecHubReportGenerator implements ReportGenerator {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       .map(x => x!)
       .join(':')
-    const type = [secHubFinding.name, secHubFinding.cweId?.toString()]
-      .filter(x => !!x)
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      .map(x => x)
-      .join('-')
+    return location
+      ? `[${location}](${this.context.getLinkToFile(
+          secHubFinding.code.location,
+          secHubFinding.code.line
+        )})`
+      : location
+  }
+
+  private getLinkedCwe(secHubFinding: SecHubFinding): string | undefined {
+    return secHubFinding?.cweId ? CWE_LINK(secHubFinding.cweId) : undefined
+  }
+
+  private getType(secHubFinding: SecHubFinding): string {
+    const cweLink = this.getLinkedCwe(secHubFinding)
+    return (
+      [secHubFinding.name, cweLink]
+        .filter(x => !!x)
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        .map(x => x)
+        .join(' - ')
+    )
+  }
+
+  private makeReportLine(secHubFinding: SecHubFinding): string {
+    // server_url/user/repo/blob/<commit-ref>/path#line
+    const linkedLocation = this.getLinkedLocation(secHubFinding)
+    const type = this.getType(secHubFinding)
+
     const result = [
       secHubFinding.severity,
       type,
-      location,
+      linkedLocation,
       secHubFinding.code.relevantPart,
       secHubFinding.code.source ?? ''
     ]
       .map(x => x ?? '')
-      .join('|')
+      .join(' | ')
+
     return `| ${result} |`
   }
 
@@ -61,14 +92,5 @@ export class SecHubReportGenerator implements ReportGenerator {
     }
 
     return { report: reportTable.join('\n'), failed: true }
-  }
-
-  private static instance: SecHubReportGenerator | null
-
-  static getInstance(): SecHubReportGenerator {
-    if (!SecHubReportGenerator.instance) {
-      SecHubReportGenerator.instance = new SecHubReportGenerator()
-    }
-    return SecHubReportGenerator.instance
   }
 }

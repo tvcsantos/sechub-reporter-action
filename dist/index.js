@@ -9704,7 +9704,7 @@ class ActionOrchestrator {
         this.inputs = inputs;
         const reporters = await this.getReporters();
         try {
-            const reportGenerator = sechub_report_generator_1.SecHubReportGenerator.getInstance();
+            const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(github.context);
             const reportResult = await reportGenerator.generateReport(this.inputs.file);
             for (const reporter of reporters) {
                 await reporter.report(reportResult);
@@ -9994,6 +9994,10 @@ class ContextExtensions {
             commitId = commitId.substring(0, 7);
         return commitId;
     }
+    getLinkToFile(filePath, line) {
+        const link = `${this.context.serverUrl}/${this.context.repo.owner}/${this.context.repo.repo}/blob/${this.getCurrentCommitId(false)}/${filePath}`;
+        return line !== undefined ? `${link}#L${line}` : link;
+    }
     static of(context) {
         return new ContextExtensions(context);
     }
@@ -10234,15 +10238,19 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SecHubReportGenerator = void 0;
 const fs = __importStar(__nccwpck_require__(3292));
+const utils_1 = __nccwpck_require__(3166);
 const HEADER = '| Severity | Type | Location | Relevant part | Source';
 const HEADER_ALIGNMENT = '|-|-|-|-|-|';
 const FILE_ENCODING = 'utf-8';
 const SUCCESS_COMMENT = '# :white_check_mark: SecHub - No findings detected on your code base!';
 const FAIL_COMMENT = '# :x: SecHub - We detected some findings on your code base!';
+const CWE_LINK = (id) => `https://cwe.mitre.org/data/definitions/${id}.html`;
 class SecHubReportGenerator {
-    constructor() { }
-    makeReportLine(secHubFinding) {
-        // server_url/user/repo/blob/<commit-ref>/path#line
+    context;
+    constructor(context) {
+        this.context = utils_1.ContextExtensions.of(context);
+    }
+    getLinkedLocation(secHubFinding) {
         const location = [
             secHubFinding.code.location,
             secHubFinding.code.line,
@@ -10252,20 +10260,34 @@ class SecHubReportGenerator {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             .map(x => x)
             .join(':');
-        const type = [secHubFinding.name, secHubFinding.cweId?.toString()]
+        return location
+            ? `[${location}](${this.context.getLinkToFile(secHubFinding.code.location, secHubFinding.code.line)})`
+            : location;
+    }
+    getLinkedCwe(secHubFinding) {
+        return secHubFinding?.cweId ? CWE_LINK(secHubFinding.cweId) : undefined;
+    }
+    getType(secHubFinding) {
+        const cweLink = this.getLinkedCwe(secHubFinding);
+        return ([secHubFinding.name, cweLink]
             .filter(x => !!x)
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             .map(x => x)
-            .join('-');
+            .join(' - '));
+    }
+    makeReportLine(secHubFinding) {
+        // server_url/user/repo/blob/<commit-ref>/path#line
+        const linkedLocation = this.getLinkedLocation(secHubFinding);
+        const type = this.getType(secHubFinding);
         const result = [
             secHubFinding.severity,
             type,
-            location,
+            linkedLocation,
             secHubFinding.code.relevantPart,
             secHubFinding.code.source ?? ''
         ]
             .map(x => x ?? '')
-            .join('|');
+            .join(' | ');
         return `| ${result} |`;
     }
     async generateReport(path) {
@@ -10282,13 +10304,6 @@ class SecHubReportGenerator {
             reportTable.push(this.makeReportLine(finding));
         }
         return { report: reportTable.join('\n'), failed: true };
-    }
-    static instance;
-    static getInstance() {
-        if (!SecHubReportGenerator.instance) {
-            SecHubReportGenerator.instance = new SecHubReportGenerator();
-        }
-        return SecHubReportGenerator.instance;
     }
 }
 exports.SecHubReportGenerator = SecHubReportGenerator;
