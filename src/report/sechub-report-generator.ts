@@ -1,14 +1,14 @@
-import * as fs from 'fs/promises'
 import { SecHubFinding, SecHubReport } from '../model/sechub'
 import { ReportResult } from '../model/report-result'
 import { ReportGenerator } from './report-generator'
 import { ContextExtensions } from '../github/utils'
 import { Context } from '@actions/github/lib/context'
 import { pre } from '../utils/utils'
+import { TextBuilder } from './text-builder'
+import { ReportProperties } from './report-properties'
 
 const HEADER = '| Severity | Type | Location | Relevant part | Source'
 const HEADER_ALIGNMENT = '|-|-|-|-|-|'
-const FILE_ENCODING = 'utf-8'
 const SUCCESS_COMMENT =
   '# :white_check_mark: SecHub - No findings detected on your code base!'
 const FAIL_COMMENT =
@@ -16,7 +16,7 @@ const FAIL_COMMENT =
 const CWE_LINK = (id: number): string =>
   `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`
 
-export class SecHubReportGenerator implements ReportGenerator {
+export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
   private context: ContextExtensions
 
   constructor(context: Context) {
@@ -85,24 +85,46 @@ export class SecHubReportGenerator implements ReportGenerator {
     return `| ${result} |`
   }
 
-  async generateReport(path: string): Promise<ReportResult> {
-    const result = await fs.readFile(path, FILE_ENCODING)
-    const secHubReport = JSON.parse(result) as SecHubReport
+  private addTitleToTextBuilder(textBuilder: TextBuilder): void {
+    textBuilder.addLines(FAIL_COMMENT)
+  }
 
-    const reportTable: string[] = []
+  private addHeaderToTextBuilder(textBuilder: TextBuilder): void {
+    textBuilder.addLines(HEADER, HEADER_ALIGNMENT)
+  }
 
-    const findings: SecHubFinding[] = secHubReport.result.findings ?? []
-
-    if (findings.length <= 0) return { report: SUCCESS_COMMENT, failed: false }
-
-    reportTable.push(FAIL_COMMENT)
-    reportTable.push(HEADER)
-    reportTable.push(HEADER_ALIGNMENT)
-
+  private async addContentToTextBuilder(
+    textBuilder: TextBuilder,
+    findings: SecHubFinding[]
+  ): Promise<boolean> {
+    let isContentTruncated = false
     for (const finding of findings) {
-      reportTable.push(this.makeReportLine(finding))
+      const theReportLine = this.makeReportLine(finding)
+      const addedLines = textBuilder.tryAddLines(theReportLine)
+      if (!addedLines) {
+        isContentTruncated = true
+        break
+      }
+    }
+    return isContentTruncated
+  }
+
+  async generateReport(
+    reportData: SecHubReport,
+    properties: ReportProperties
+  ): Promise<ReportResult> {
+    const findings: SecHubFinding[] = reportData.result.findings ?? []
+
+    if (findings.length <= 0) {
+      return { report: SUCCESS_COMMENT, failed: false, truncated: false }
     }
 
-    return { report: reportTable.join('\n'), failed: true }
+    const textBuilder = new TextBuilder(properties.maxSize)
+
+    this.addTitleToTextBuilder(textBuilder)
+    this.addHeaderToTextBuilder(textBuilder)
+    const result = await this.addContentToTextBuilder(textBuilder, findings)
+
+    return { report: textBuilder.build(), failed: true, truncated: result }
   }
 }

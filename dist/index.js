@@ -9661,6 +9661,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ActionOrchestrator = void 0;
+const fs = __importStar(__nccwpck_require__(3292));
 const check_1 = __nccwpck_require__(6149);
 const inputs_1 = __nccwpck_require__(8767);
 const github = __importStar(__nccwpck_require__(5438));
@@ -9671,6 +9672,7 @@ const check_reporter_1 = __nccwpck_require__(3348);
 const summary_reporter_1 = __nccwpck_require__(867);
 const core = __importStar(__nccwpck_require__(2186));
 const sechub_report_generator_1 = __nccwpck_require__(8900);
+const FILE_ENCODING = 'utf-8';
 class ActionOrchestrator {
     gitHubCheck = null;
     inputs;
@@ -9705,11 +9707,23 @@ class ActionOrchestrator {
         const reporters = await this.getReporters();
         try {
             const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(github.context);
-            const reportResult = await reportGenerator.generateReport(this.inputs.file);
+            const fileContents = await fs.readFile(this.inputs.file, {
+                encoding: FILE_ENCODING
+            });
+            const reportData = JSON.parse(fileContents);
+            const fullReportResult = await reportGenerator.generateReport(reportData, {});
+            let failed = false;
             for (const reporter of reporters) {
+                let reportResult = fullReportResult;
+                if (reporter.maxSize != null) {
+                    reportResult = await reportGenerator.generateReport(reportData, {
+                        maxSize: reporter.maxSize
+                    });
+                }
+                failed &&= reportResult.failed;
                 await reporter.report(reportResult);
             }
-            return reportResult.failed && this.inputs.failOnError ? 1 : 0;
+            return failed && this.inputs.failOnError ? 1 : 0;
         }
         catch (e) {
             this.gitHubCheck?.cancel();
@@ -10167,17 +10181,26 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CheckReporter = void 0;
 const FAIL_SUMMARY = 'SecHub - We detected some findings on your code base!';
 const SUCCESS_SUMMARY = 'SecHub - No findings detected on your code base!';
+const REPORT_CONTENT_TRUNCATED = '**Note: Report truncated due to character limit constraints!**';
+const MAX_CHECK_BODY_SIZE = 65535;
 class CheckReporter {
+    maxSize = MAX_CHECK_BODY_SIZE;
+    static getSummary(summary, truncated) {
+        const result = truncated
+            ? [summary, '', REPORT_CONTENT_TRUNCATED]
+            : [summary];
+        return result.join('\n');
+    }
     gitHubCheck;
     constructor(gitHubCheck) {
         this.gitHubCheck = gitHubCheck;
     }
     async report(data) {
         if (data.failed) {
-            await this.gitHubCheck.fail(FAIL_SUMMARY, data.report);
+            await this.gitHubCheck.fail(CheckReporter.getSummary(FAIL_SUMMARY, data.truncated), data.report);
         }
         else {
-            await this.gitHubCheck.pass(SUCCESS_SUMMARY, data.report);
+            await this.gitHubCheck.pass(CheckReporter.getSummary(SUCCESS_SUMMARY, data.truncated), data.report);
         }
     }
 }
@@ -10194,6 +10217,7 @@ exports.CheckReporter = CheckReporter;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentReporter = void 0;
 class CommentReporter {
+    maxSize = null;
     gitHubPRCommenter;
     constructor(gitHubPRCommenter) {
         this.gitHubPRCommenter = gitHubPRCommenter;
@@ -10208,41 +10232,17 @@ exports.CommentReporter = CommentReporter;
 /***/ }),
 
 /***/ 8900:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SecHubReportGenerator = void 0;
-const fs = __importStar(__nccwpck_require__(3292));
 const utils_1 = __nccwpck_require__(3166);
 const utils_2 = __nccwpck_require__(239);
+const text_builder_1 = __nccwpck_require__(8758);
 const HEADER = '| Severity | Type | Location | Relevant part | Source';
 const HEADER_ALIGNMENT = '|-|-|-|-|-|';
-const FILE_ENCODING = 'utf-8';
 const SUCCESS_COMMENT = '# :white_check_mark: SecHub - No findings detected on your code base!';
 const FAIL_COMMENT = '# :x: SecHub - We detected some findings on your code base!';
 const CWE_LINK = (id) => `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`;
@@ -10299,20 +10299,34 @@ class SecHubReportGenerator {
             .join(' | ');
         return `| ${result} |`;
     }
-    async generateReport(path) {
-        const result = await fs.readFile(path, FILE_ENCODING);
-        const secHubReport = JSON.parse(result);
-        const reportTable = [];
-        const findings = secHubReport.result.findings ?? [];
-        if (findings.length <= 0)
-            return { report: SUCCESS_COMMENT, failed: false };
-        reportTable.push(FAIL_COMMENT);
-        reportTable.push(HEADER);
-        reportTable.push(HEADER_ALIGNMENT);
+    addTitleToTextBuilder(textBuilder) {
+        textBuilder.addLines(FAIL_COMMENT);
+    }
+    addHeaderToTextBuilder(textBuilder) {
+        textBuilder.addLines(HEADER, HEADER_ALIGNMENT);
+    }
+    async addContentToTextBuilder(textBuilder, findings) {
+        let isContentTruncated = false;
         for (const finding of findings) {
-            reportTable.push(this.makeReportLine(finding));
+            const theReportLine = this.makeReportLine(finding);
+            const addedLines = textBuilder.tryAddLines(theReportLine);
+            if (!addedLines) {
+                isContentTruncated = true;
+                break;
+            }
         }
-        return { report: reportTable.join('\n'), failed: true };
+        return isContentTruncated;
+    }
+    async generateReport(reportData, properties) {
+        const findings = reportData.result.findings ?? [];
+        if (findings.length <= 0) {
+            return { report: SUCCESS_COMMENT, failed: false, truncated: false };
+        }
+        const textBuilder = new text_builder_1.TextBuilder(properties.maxSize);
+        this.addTitleToTextBuilder(textBuilder);
+        this.addHeaderToTextBuilder(textBuilder);
+        const result = await this.addContentToTextBuilder(textBuilder, findings);
+        return { report: textBuilder.build(), failed: true, truncated: result };
     }
 }
 exports.SecHubReportGenerator = SecHubReportGenerator;
@@ -10328,6 +10342,7 @@ exports.SecHubReportGenerator = SecHubReportGenerator;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SummaryReporter = void 0;
 class SummaryReporter {
+    maxSize = null;
     theSummary;
     constructor(theSummary) {
         this.theSummary = theSummary;
@@ -10337,6 +10352,60 @@ class SummaryReporter {
     }
 }
 exports.SummaryReporter = SummaryReporter;
+
+
+/***/ }),
+
+/***/ 8758:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TextBuilder = void 0;
+class TextBuilder {
+    maxSize;
+    lines = [];
+    sizeUpperBound = 0;
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+    }
+    addLines(...lines) {
+        this.doAddLines(lines, true);
+    }
+    tryAddLines(...lines) {
+        return this.doAddLines(lines, false);
+    }
+    doAddLines(lines, required) {
+        const requiredSizeForLines = this.computeRequiredSizeForLines(lines);
+        const hasSpaceLeft = this.hasSpaceLeft(requiredSizeForLines);
+        if (required || hasSpaceLeft) {
+            this.ensureBounds(requiredSizeForLines);
+            this.lines.push(...lines);
+            this.sizeUpperBound += requiredSizeForLines;
+        }
+        return hasSpaceLeft;
+    }
+    hasSpaceLeft(delta) {
+        return (this.maxSize === undefined || this.sizeUpperBound + delta <= this.maxSize);
+    }
+    computeRequiredSizeForLines(lines) {
+        const size = lines.reduce((previousValue, currentValue) => previousValue + currentValue.length, 0);
+        const newLines = lines.length > 1 ? lines.length - 1 : 0;
+        return lines.length <= 0
+            ? 0
+            : (this.lines.length > 0 ? 1 : 0) + size + newLines;
+    }
+    ensureBounds(delta) {
+        if (!this.hasSpaceLeft(delta)) {
+            throw new Error(`Character limit ${this.maxSize} reached!`);
+        }
+    }
+    build() {
+        return this.lines.join('\n');
+    }
+}
+exports.TextBuilder = TextBuilder;
 
 
 /***/ }),
