@@ -1,3 +1,4 @@
+import * as fs from 'fs/promises'
 import { GitHubCheck, GitHubCheckCreator } from '../github/check'
 import { Inputs, ModeOption } from '../input/inputs'
 import { Reporter } from '../report/reporter'
@@ -10,6 +11,9 @@ import { SummaryReporter } from '../report/summary-reporter'
 import * as core from '@actions/core'
 import { GitHub } from '@actions/github/lib/utils'
 import { SecHubReportGenerator } from '../report/sechub-report-generator'
+import { SecHubReport } from '../model/sechub'
+
+const FILE_ENCODING = 'utf-8'
 
 export class ActionOrchestrator {
   private gitHubCheck: GitHubCheck | null = null
@@ -58,13 +62,30 @@ export class ActionOrchestrator {
     const reporters = await this.getReporters()
     try {
       const reportGenerator = new SecHubReportGenerator(github.context)
-      const reportResult = await reportGenerator.generateReport(
-        this.inputs.file
+
+      const fileContents = await fs.readFile(this.inputs.file, {
+        encoding: FILE_ENCODING
+      })
+      const reportData = JSON.parse(fileContents) as SecHubReport
+
+      const fullReportResult = await reportGenerator.generateReport(
+        reportData,
+        {}
       )
+
+      let failed = false
       for (const reporter of reporters) {
+        let reportResult = fullReportResult
+        if (reporter.maxSize != null) {
+          reportResult = await reportGenerator.generateReport(reportData, {
+            maxSize: reporter.maxSize
+          })
+        }
+        failed &&= reportResult.failed
         await reporter.report(reportResult)
       }
-      return reportResult.failed && this.inputs.failOnError ? 1 : 0
+
+      return failed && this.inputs.failOnError ? 1 : 0
     } catch (e) {
       this.gitHubCheck?.cancel()
       throw e

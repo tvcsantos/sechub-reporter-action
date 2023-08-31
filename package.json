@@ -1,7 +1,7 @@
 {
   "name": "sechub-reporter-action",
   "description": "A GitHub action for generating reports for SecHub",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "tvcsantos",
   "private": true,
   "homepage": "https://github.com/tvcsantos/sechub-reporter-action",
