@@ -2,10 +2,8 @@ import { GitHubCheck } from '../github/check'
 import { Reporter } from './reporter'
 import { ReportResult } from '../model/report-result'
 
-// TODO change with a FAIL message for your summary
-const FAIL_SUMMARY = 'Manifests found that are not valid!'
-// TODO change with a SUCCESS message for your summary
-const SUCCESS_SUMMARY = 'No invalid manifests!'
+const FAIL_SUMMARY = 'SecHub - We detected some findings on your code base!'
+const SUCCESS_SUMMARY = 'SecHub - No findings detected on your code base!'
 
 export class CheckReporter implements Reporter {
   private gitHubCheck: GitHubCheck

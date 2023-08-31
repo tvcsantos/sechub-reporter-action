@@ -1,16 +1,16 @@
 {
-  "name": "tool-reporter-action-template",
-  "description": "A template GitHub action for generating reports for tools (e.g. linters)",
-  "version": "2.0.1",
+  "name": "sechub-reporter-action",
+  "description": "A GitHub action for generating reports for SecHub",
+  "version": "1.0.0",
   "author": "tvcsantos",
   "private": true,
-  "homepage": "https://github.com/tvcsantos/tool-reporter-action-template",
+  "homepage": "https://github.com/tvcsantos/sechub-reporter-action",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tvcsantos/tool-reporter-action-template.git"
+    "url": "git+https://github.com/tvcsantos/sechub-reporter-action.git"
   },
   "bugs": {
-    "url": "https://github.com/tvcsantos/tool-reporter-action-template/issues"
+    "url": "https://github.com/tvcsantos/sechub-reporter-action/issues"
   },
   "keywords": [
     "actions",

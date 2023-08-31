@@ -9670,7 +9670,7 @@ const constants_1 = __nccwpck_require__(2706);
 const check_reporter_1 = __nccwpck_require__(3348);
 const summary_reporter_1 = __nccwpck_require__(867);
 const core = __importStar(__nccwpck_require__(2186));
-const kubeconform_report_generator_1 = __nccwpck_require__(4918);
+const sechub_report_generator_1 = __nccwpck_require__(8900);
 class ActionOrchestrator {
     gitHubCheck = null;
     inputs;
@@ -9704,8 +9704,8 @@ class ActionOrchestrator {
         this.inputs = inputs;
         const reporters = await this.getReporters();
         try {
-            const reportGenerator = kubeconform_report_generator_1.KubeconformReportGenerator.getInstance();
-            const reportResult = await reportGenerator.generateReport(this.inputs.file, { showFilename: this.inputs.showFilename });
+            const reportGenerator = sechub_report_generator_1.SecHubReportGenerator.getInstance();
+            const reportResult = await reportGenerator.generateReport(this.inputs.file);
             for (const reporter of reporters) {
                 await reporter.report(reportResult);
             }
@@ -9729,10 +9729,8 @@ exports.ActionOrchestrator = ActionOrchestrator;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CHECK_NAME = exports.APPLICATION_NAME = void 0;
-// TODO change to your application name (e.g. kubeconform-reporter)
-exports.APPLICATION_NAME = 'kubeconfrom-reporter';
-// TODO change to your check name (e.g. Kubeconform Check)
-exports.CHECK_NAME = 'Kubeconform Check';
+exports.APPLICATION_NAME = 'sechub-reporter';
+exports.CHECK_NAME = 'SecHub Check';
 
 
 /***/ }),
@@ -10088,11 +10086,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.gatherInputs = exports.ModeOption = exports.Input = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const utils_1 = __nccwpck_require__(3166);
-// TODO Add or change inputs as required
 var Input;
 (function (Input) {
     Input["FILE"] = "file";
-    Input["SHOW_FILENAME"] = "show-filename";
     Input["MODES"] = "modes";
     Input["GITHUB_TOKEN"] = "token";
     Input["FAIL_ON_ERROR"] = "fail-on-error";
@@ -10104,20 +10100,15 @@ var ModeOption;
     ModeOption["SUMMARY"] = "summary";
 })(ModeOption || (exports.ModeOption = ModeOption = {}));
 function gatherInputs() {
-    // TODO adapt method to return your changed inputs if required
     const file = getInputFile();
     const modes = getInputModes();
     const token = getInputToken();
-    const showFilename = getInputShowFilename();
     const failOnError = getInputFailOnError();
-    return { file, modes, token, showFilename, failOnError };
+    return { file, modes, token, failOnError };
 }
 exports.gatherInputs = gatherInputs;
 function getInputFile() {
     return core.getInput(Input.FILE, { required: true });
-}
-function getInputShowFilename() {
-    return core.getBooleanInput(Input.SHOW_FILENAME);
 }
 function internalGetInputModes() {
     const multilineInput = core.getMultilineInput(Input.MODES);
@@ -10157,7 +10148,7 @@ function getInputToken() {
 function getInputFailOnError() {
     return core.getBooleanInput(Input.FAIL_ON_ERROR);
 }
-// TODO Add methods for your extra inputs
+// Add methods for your extra inputs
 // Pattern: function getInput<input-name>(): <type>
 
 
@@ -10170,10 +10161,8 @@ function getInputFailOnError() {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CheckReporter = void 0;
-// TODO change with a FAIL message for your summary
-const FAIL_SUMMARY = 'Manifests found that are not valid!';
-// TODO change with a SUCCESS message for your summary
-const SUCCESS_SUMMARY = 'No invalid manifests!';
+const FAIL_SUMMARY = 'SecHub - We detected some findings on your code base!';
+const SUCCESS_SUMMARY = 'SecHub - No findings detected on your code base!';
 class CheckReporter {
     gitHubCheck;
     constructor(gitHubCheck) {
@@ -10214,7 +10203,7 @@ exports.CommentReporter = CommentReporter;
 
 /***/ }),
 
-/***/ 4918:
+/***/ 8900:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -10243,55 +10232,66 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.KubeconformReportGenerator = void 0;
+exports.SecHubReportGenerator = void 0;
 const fs = __importStar(__nccwpck_require__(3292));
-const utils_1 = __nccwpck_require__(239);
-// TODO change all constants below with your reporting format and messages
-const HEADER = (showFilename) => `${showFilename ? '| Filename ' : ''}| Name | Kind | Version | Message |`;
-const HEADER_ALIGNMENT = (showFilename) => `${showFilename ? '|-' : ''}|-|-|-|-|`;
+const HEADER = '| Severity | Type | Location | Relevant part | Source';
+const HEADER_ALIGNMENT = '|-|-|-|-|-|';
 const FILE_ENCODING = 'utf-8';
-const SUCCESS_COMMENT = '# :white_check_mark: All Kubernetes manifests are valid!';
-const FAIL_COMMENT = '# :x: Invalid Kubernetes manifests found!';
-// TODO change this class with and implementation for your report generator
-class KubeconformReportGenerator {
+const SUCCESS_COMMENT = '# :white_check_mark: SecHub - We detected some findings on your code base!';
+const FAIL_COMMENT = '# :x: SecHub - No findings detected on your code base!';
+class SecHubReportGenerator {
     constructor() { }
-    makeReportLine(line, properties) {
-        const filename = properties.showFilename
-            ? `| ${(0, utils_1.noBreak)(line.filename)} `
-            : '';
-        return `${filename}| ${(0, utils_1.noBreak)(line.name)} | ${(0, utils_1.noBreak)(line.kind)} | ${(0, utils_1.noBreak)(line.version)} | ${line.message} |`;
+    makeReportLine(secHubFinding) {
+        // server_url/user/repo/blob/<commit-ref>/path#line
+        const location = [
+            secHubFinding.code.location,
+            secHubFinding.code.line,
+            secHubFinding.code.column
+        ]
+            .filter(x => !!x)
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            .map(x => x)
+            .join(':');
+        const type = [secHubFinding.name, secHubFinding.cweId?.toString()]
+            .filter(x => !!x)
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            .map(x => x)
+            .join('-');
+        const result = [
+            secHubFinding.severity,
+            type,
+            location,
+            secHubFinding.code.relevantPart,
+            secHubFinding.code.source ?? ''
+        ]
+            .map(x => x ?? '')
+            .join('|');
+        return `| ${result} |`;
     }
-    async generateReport(path, properties) {
+    async generateReport(path) {
         const result = await fs.readFile(path, FILE_ENCODING);
-        const kubeconformResult = JSON.parse(result);
+        const secHubReport = JSON.parse(result);
         const reportTable = [];
-        const resources = kubeconformResult.resources ?? [];
-        if (resources.length <= 0)
+        const findings = secHubReport.result.findings ?? [];
+        if (findings.length <= 0)
             return { report: SUCCESS_COMMENT, failed: false };
         reportTable.push(FAIL_COMMENT);
-        reportTable.push(HEADER(properties.showFilename));
-        reportTable.push(HEADER_ALIGNMENT(properties.showFilename));
-        for (const resource of resources) {
-            const line = {
-                name: resource.name,
-                kind: resource.kind,
-                version: resource.version,
-                message: resource.msg,
-                filename: resource.filename
-            };
-            reportTable.push(this.makeReportLine(line, properties));
+        reportTable.push(HEADER);
+        reportTable.push(HEADER_ALIGNMENT);
+        for (const finding of findings) {
+            reportTable.push(this.makeReportLine(finding));
         }
         return { report: reportTable.join('\n'), failed: true };
     }
     static instance;
     static getInstance() {
-        if (!KubeconformReportGenerator.instance) {
-            KubeconformReportGenerator.instance = new KubeconformReportGenerator();
+        if (!SecHubReportGenerator.instance) {
+            SecHubReportGenerator.instance = new SecHubReportGenerator();
         }
-        return KubeconformReportGenerator.instance;
+        return SecHubReportGenerator.instance;
     }
 }
-exports.KubeconformReportGenerator = KubeconformReportGenerator;
+exports.SecHubReportGenerator = SecHubReportGenerator;
 
 
 /***/ }),
@@ -10313,21 +10313,6 @@ class SummaryReporter {
     }
 }
 exports.SummaryReporter = SummaryReporter;
-
-
-/***/ }),
-
-/***/ 239:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.noBreak = void 0;
-function noBreak(s) {
-    return s.replace(/-/g, '&#8209;').replace(/ /g, '&nbsp;');
-}
-exports.noBreak = noBreak;
 
 
 /***/ }),

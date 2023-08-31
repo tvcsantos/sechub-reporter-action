@@ -14,12 +14,12 @@ jobs:
       matrix:
         show-filename: [true, false]
         modes: [pr-comment, check, summary]
-        file: [kubeconform-result-error.json, kubeconform-result-ok.json]
+        file: [sechub-result-error.json, sechub-result-ok.json]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Kubeconform reporter test
+      - name: SecHub reporter test
         uses: ./
         with:
           file: ./__tests__/${{ matrix.file }}
@@ -28,12 +28,12 @@ jobs:
   test-multi-mode:
     strategy:
       matrix:
-        file: [ kubeconform-result-error.json, kubeconform-result-ok.json ]
+        file: [ sechub-result-error.json, sechub-result-ok.json ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Kubeconform reporter test
+      - name: SecHub reporter test
         uses: ./
         with:
           file: ./__tests__/${{ matrix.file }}
@@ -44,12 +44,12 @@ jobs:
   test-fail-on-error:
     strategy:
       matrix:
-        file: [ kubeconform-result-error.json, kubeconform-result-ok.json ]
+        file: [ sechub-result-error.json, sechub-result-ok.json ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Kubeconform reporter test
+      - name: SecHub reporter test
         uses: ./
         with:
           file: ./__tests__/${{ matrix.file }}
