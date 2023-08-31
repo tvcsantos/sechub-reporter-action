@@ -13,7 +13,7 @@ const SUCCESS_COMMENT =
 const FAIL_COMMENT =
   '# :x: SecHub - We detected some findings on your code base!'
 const CWE_LINK = (id: number): string =>
-  `[CWE-${id}](https://cwe.mitre.org/data/definitions/${id}.html)`
+  `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`
 
 export class SecHubReportGenerator implements ReportGenerator {
   private context: ContextExtensions
