@@ -12,7 +12,6 @@ jobs:
   test:
     strategy:
       matrix:
-        show-filename: [true, false]
         modes: [pr-comment, check, summary]
         file: [sechub-result-error.json, sechub-result-ok.json]
     runs-on: ubuntu-latest
@@ -23,7 +22,6 @@ jobs:
         uses: ./
         with:
           file: ./__tests__/${{ matrix.file }}
-          show-filename: ${{ matrix.show-filename }}
           modes: ${{ matrix.modes }}
   test-multi-mode:
     strategy:
@@ -37,7 +35,6 @@ jobs:
         uses: ./
         with:
           file: ./__tests__/${{ matrix.file }}
-          show-filename: false
           modes: |
             pr-comment
             check
@@ -53,7 +50,6 @@ jobs:
         uses: ./
         with:
           file: ./__tests__/${{ matrix.file }}
-          show-filename: false
           modes: summary
           fail-on-error: true
         continue-on-error: true
