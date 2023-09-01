@@ -12,6 +12,7 @@ import * as core from '@actions/core'
 import { GitHub } from '@actions/github/lib/utils'
 import { SecHubReportGenerator } from '../report/sechub-report-generator'
 import { SecHubReport } from '../model/sechub'
+import { enhancedContext } from '../github/enhanced-context'
 
 const FILE_ENCODING = 'utf-8'
 
@@ -31,13 +32,13 @@ export class ActionOrchestrator {
           new GitHubPRCommenter(
             APPLICATION_NAME,
             this.getOctokit(),
-            github.context
+            enhancedContext
           )
         )
       case ModeOption.CHECK: {
         const gitHubCheckCreator = new GitHubCheckCreator(
           this.getOctokit(),
-          github.context
+          enhancedContext
         )
         this.gitHubCheck = await gitHubCheckCreator.create(CHECK_NAME)
         return new CheckReporter(this.gitHubCheck)
@@ -61,7 +62,7 @@ export class ActionOrchestrator {
     this.inputs = inputs
     const reporters = await this.getReporters()
     try {
-      const reportGenerator = new SecHubReportGenerator(github.context)
+      const reportGenerator = new SecHubReportGenerator(enhancedContext)
 
       const fileContents = await fs.readFile(this.inputs.file, {
         encoding: FILE_ENCODING

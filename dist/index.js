@@ -9672,6 +9672,7 @@ const check_reporter_1 = __nccwpck_require__(3348);
 const summary_reporter_1 = __nccwpck_require__(867);
 const core = __importStar(__nccwpck_require__(2186));
 const sechub_report_generator_1 = __nccwpck_require__(8900);
+const enhanced_context_1 = __nccwpck_require__(9660);
 const FILE_ENCODING = 'utf-8';
 class ActionOrchestrator {
     gitHubCheck = null;
@@ -9683,9 +9684,9 @@ class ActionOrchestrator {
     async getReporter(mode) {
         switch (mode) {
             case inputs_1.ModeOption.PR_COMMENT:
-                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.getOctokit(), github.context));
+                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.getOctokit(), enhanced_context_1.enhancedContext));
             case inputs_1.ModeOption.CHECK: {
-                const gitHubCheckCreator = new check_1.GitHubCheckCreator(this.getOctokit(), github.context);
+                const gitHubCheckCreator = new check_1.GitHubCheckCreator(this.getOctokit(), enhanced_context_1.enhancedContext);
                 this.gitHubCheck = await gitHubCheckCreator.create(constants_1.CHECK_NAME);
                 return new check_reporter_1.CheckReporter(this.gitHubCheck);
             }
@@ -9706,7 +9707,7 @@ class ActionOrchestrator {
         this.inputs = inputs;
         const reporters = await this.getReporters();
         try {
-            const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(github.context);
+            const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(enhanced_context_1.enhancedContext);
             const fileContents = await fs.readFile(this.inputs.file, {
                 encoding: FILE_ENCODING
             });
@@ -9780,7 +9781,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitHubCheck = exports.GitHubCheckCreator = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const utils_1 = __nccwpck_require__(3166);
 class GitHubCheckCreator {
     octokit;
     context;
@@ -9789,7 +9789,7 @@ class GitHubCheckCreator {
         this.context = context;
     }
     async create(name) {
-        const head_sha = utils_1.ContextExtensions.of(this.context).getSha();
+        const head_sha = this.context.getSha();
         core.info(`Creating ${name}...`);
         const payload = {
             owner: this.context.repo.owner,
@@ -9943,7 +9943,7 @@ exports.GitHubPRCommenter = GitHubPRCommenter;
 
 /***/ }),
 
-/***/ 3166:
+/***/ 9660:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -9972,7 +9972,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.contextExt = exports.ContextExtensions = void 0;
+exports.enhancedContext = exports.extendContext = void 0;
 const github = __importStar(__nccwpck_require__(5438));
 const prEvents = [
     'pull_request',
@@ -9981,43 +9981,35 @@ const prEvents = [
     'pull_request_review_comment'
 ];
 const REFS_REGEX = RegExp('refs/(heads|tags)/');
-class ContextExtensions {
-    context;
-    constructor(context) {
-        this.context = context;
-    }
-    isPullRequest() {
-        return prEvents.includes(this.context.eventName);
-    }
-    getSha() {
-        let sha = this.context.sha;
-        if (this.isPullRequest()) {
-            const pull = this.context.payload.pull_request;
+function extendContext(context) {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-explicit-any
+    const result = context;
+    result.isPullRequest = () => prEvents.includes(context.eventName);
+    result.getSha = () => {
+        let sha = context.sha;
+        if (result.isPullRequest()) {
+            const pull = context.payload.pull_request;
             if (pull?.head.sha) {
                 sha = pull?.head.sha;
             }
         }
         return sha;
-    }
-    getCurrentBranchName() {
-        return this.context.ref.replace(REFS_REGEX, '');
-    }
-    getCurrentCommitId(short = true) {
-        let commitId = this.context.sha;
+    };
+    result.getCurrentBranchName = () => context.ref.replace(REFS_REGEX, '');
+    result.getCurrentCommitId = (short) => {
+        let commitId = context.sha;
         if (short)
             commitId = commitId.substring(0, 7);
         return commitId;
-    }
-    getLinkToFile(filePath, line) {
-        const link = `${this.context.serverUrl}/${this.context.repo.owner}/${this.context.repo.repo}/blob/${this.getCurrentCommitId(false)}/${filePath}`;
+    };
+    result.getLinkToFile = (filePath, line) => {
+        const link = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/${result.getCurrentCommitId(false)}/${filePath}`;
         return line !== undefined ? `${link}#L${line}` : link;
-    }
-    static of(context) {
-        return new ContextExtensions(context);
-    }
+    };
+    return result;
 }
-exports.ContextExtensions = ContextExtensions;
-exports.contextExt = ContextExtensions.of(github.context);
+exports.extendContext = extendContext;
+exports.enhancedContext = extendContext(github.context);
 
 
 /***/ }),
@@ -10103,7 +10095,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.gatherInputs = exports.ModeOption = exports.Input = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const utils_1 = __nccwpck_require__(3166);
+const enhanced_context_1 = __nccwpck_require__(9660);
 var Input;
 (function (Input) {
     Input["FILE"] = "file";
@@ -10143,7 +10135,7 @@ const NOT_IN_PR_CONTEXT_WARNING = "Selected 'pr-comment' mode but the action is 
 const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK = "No additional mode selected, using 'check' mode.";
 function getInputModes() {
     const modes = new Set(internalGetInputModes());
-    const isPullRequest = utils_1.contextExt.isPullRequest();
+    const isPullRequest = enhanced_context_1.enhancedContext.isPullRequest();
     if (modes.size <= 0) {
         if (isPullRequest) {
             modes.add(ModeOption.PR_COMMENT);
@@ -10238,8 +10230,7 @@ exports.CommentReporter = CommentReporter;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SecHubReportGenerator = void 0;
-const utils_1 = __nccwpck_require__(3166);
-const utils_2 = __nccwpck_require__(239);
+const utils_1 = __nccwpck_require__(239);
 const text_builder_1 = __nccwpck_require__(8758);
 const HEADER = '| Severity | Type | Location | Relevant part | Source';
 const HEADER_ALIGNMENT = '|-|-|-|-|-|';
@@ -10249,7 +10240,7 @@ const CWE_LINK = (id) => `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitio
 class SecHubReportGenerator {
     context;
     constructor(context) {
-        this.context = utils_1.ContextExtensions.of(context);
+        this.context = context;
     }
     getLinkedLocation(secHubFinding) {
         const location = [
@@ -10278,11 +10269,11 @@ class SecHubReportGenerator {
     }
     getSource(secHubFinding) {
         const source = secHubFinding.code.source;
-        return source ? (0, utils_2.pre)(source) : undefined;
+        return source ? (0, utils_1.pre)(source) : undefined;
     }
     getRelevantPart(secHubFinding) {
         const relevantPart = secHubFinding.code.relevantPart;
-        return relevantPart ? (0, utils_2.pre)(relevantPart) : undefined;
+        return relevantPart ? (0, utils_1.pre)(relevantPart) : undefined;
     }
     makeReportLine(secHubFinding) {
         // server_url/user/repo/blob/<commit-ref>/path#line
