@@ -1,19 +1,19 @@
 import * as core from '@actions/core'
-import { ContextExtensions } from './utils'
 import { GitHub } from '@actions/github/lib/utils'
 import { Context } from '@actions/github/lib/context'
+import { EnhancedContext } from './enhanced-context'
 
 export class GitHubCheckCreator {
   private readonly octokit: InstanceType<typeof GitHub>
-  private readonly context: Context
+  private readonly context: EnhancedContext
 
-  constructor(octokit: InstanceType<typeof GitHub>, context: Context) {
+  constructor(octokit: InstanceType<typeof GitHub>, context: EnhancedContext) {
     this.octokit = octokit
     this.context = context
   }
 
   async create(name: string): Promise<GitHubCheck> {
-    const head_sha = ContextExtensions.of(this.context).getSha()
+    const head_sha = this.context.getSha()
 
     core.info(`Creating ${name}...`)
 

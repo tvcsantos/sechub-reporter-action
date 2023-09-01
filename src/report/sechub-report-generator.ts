@@ -1,11 +1,10 @@
 import { SecHubFinding, SecHubReport } from '../model/sechub'
 import { ReportResult } from '../model/report-result'
 import { ReportGenerator } from './report-generator'
-import { ContextExtensions } from '../github/utils'
-import { Context } from '@actions/github/lib/context'
+import { EnhancedContext } from '../github/enhanced-context'
 import { pre } from '../utils/utils'
-import { TextBuilder } from './text-builder'
 import { ReportProperties } from './report-properties'
+import { TextBuilder } from './text-builder'
 
 const HEADER = '| Severity | Type | Location | Relevant part | Source'
 const HEADER_ALIGNMENT = '|-|-|-|-|-|'
@@ -17,10 +16,10 @@ const CWE_LINK = (id: number): string =>
   `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`
 
 export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
-  private context: ContextExtensions
+  private context: EnhancedContext
 
-  constructor(context: Context) {
-    this.context = ContextExtensions.of(context)
+  constructor(context: EnhancedContext) {
+    this.context = context
   }
 
   private getLinkedLocation(secHubFinding: SecHubFinding): string {
