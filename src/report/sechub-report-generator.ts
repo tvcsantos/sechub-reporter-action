@@ -1,7 +1,7 @@
 import { SecHubFinding, SecHubReport } from '../model/sechub'
 import { ReportResult } from '../model/report-result'
 import { ReportGenerator } from './report-generator'
-import { EnhancedContext } from '../github/enhanced-context'
+import { ExtendedContext } from '../github/extended-context'
 import { pre } from '../utils/utils'
 import { ReportProperties } from './report-properties'
 import { TextBuilder } from './text-builder'
@@ -16,9 +16,9 @@ const CWE_LINK = (id: number): string =>
   `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`
 
 export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
-  private context: EnhancedContext
+  private context: ExtendedContext
 
-  constructor(context: EnhancedContext) {
+  constructor(context: ExtendedContext) {
     this.context = context
   }
 

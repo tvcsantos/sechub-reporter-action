@@ -1,4 +1,3 @@
-import * as fs from 'fs/promises'
 import { GitHubCheck, GitHubCheckCreator } from '../github/check'
 import { Inputs, ModeOption } from '../input/inputs'
 import { Reporter } from '../report/reporter'
@@ -11,8 +10,10 @@ import { SummaryReporter } from '../report/summary-reporter'
 import * as core from '@actions/core'
 import { GitHub } from '@actions/github/lib/utils'
 import { SecHubReportGenerator } from '../report/sechub-report-generator'
+import fs from 'fs/promises'
+import { extendedContext } from '../github/extended-context'
+import { ReportResult } from '../model/report-result'
 import { SecHubReport } from '../model/sechub'
-import { enhancedContext } from '../github/enhanced-context'
 
 const FILE_ENCODING = 'utf-8'
 
@@ -32,13 +33,13 @@ export class ActionOrchestrator {
           new GitHubPRCommenter(
             APPLICATION_NAME,
             this.getOctokit(),
-            enhancedContext
+            extendedContext
           )
         )
       case ModeOption.CHECK: {
         const gitHubCheckCreator = new GitHubCheckCreator(
           this.getOctokit(),
-          enhancedContext
+          extendedContext
         )
         this.gitHubCheck = await gitHubCheckCreator.create(CHECK_NAME)
         return new CheckReporter(this.gitHubCheck)
@@ -58,33 +59,47 @@ export class ActionOrchestrator {
     return result
   }
 
+  private async parseReport(): Promise<SecHubReport> {
+    // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
+    const fileContents = await fs.readFile(this.inputs!!.file, {
+      encoding: FILE_ENCODING
+    })
+    return JSON.parse(fileContents) as SecHubReport
+  }
+
+  private async doReports(
+    reportData: SecHubReport,
+    reporters: Reporter[]
+  ): Promise<boolean> {
+    const reportGenerator = new SecHubReportGenerator(extendedContext)
+    const reportResults = new Map<number | null, ReportResult>()
+    let failed = false
+
+    for (const reporter of reporters) {
+      let reportResult = reportResults.get(reporter.maxSize)
+
+      if (reportResult === undefined) {
+        reportResult = await reportGenerator.generateReport(reportData, {
+          maxSize: reporter.maxSize ?? undefined
+        })
+        reportResults.set(reporter.maxSize, reportResult)
+      }
+
+      failed &&= reportResult.failed
+
+      await reporter.report(reportResult)
+    }
+
+    return failed
+  }
+
   async execute(inputs: Inputs): Promise<number> {
     this.inputs = inputs
     const reporters = await this.getReporters()
     try {
-      const reportGenerator = new SecHubReportGenerator(enhancedContext)
+      const report = await this.parseReport()
 
-      const fileContents = await fs.readFile(this.inputs.file, {
-        encoding: FILE_ENCODING
-      })
-      const reportData = JSON.parse(fileContents) as SecHubReport
-
-      const fullReportResult = await reportGenerator.generateReport(
-        reportData,
-        {}
-      )
-
-      let failed = false
-      for (const reporter of reporters) {
-        let reportResult = fullReportResult
-        if (reporter.maxSize != null) {
-          reportResult = await reportGenerator.generateReport(reportData, {
-            maxSize: reporter.maxSize
-          })
-        }
-        failed &&= reportResult.failed
-        await reporter.report(reportResult)
-      }
+      const failed = await this.doReports(report, reporters)
 
       return failed && this.inputs.failOnError ? 1 : 0
     } catch (e) {

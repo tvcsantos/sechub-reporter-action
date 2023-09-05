@@ -1,13 +1,13 @@
 import * as core from '@actions/core'
 import { GitHub } from '@actions/github/lib/utils'
 import { Context } from '@actions/github/lib/context'
-import { EnhancedContext } from './enhanced-context'
+import { ExtendedContext } from './extended-context'
 
 export class GitHubCheckCreator {
   private readonly octokit: InstanceType<typeof GitHub>
-  private readonly context: EnhancedContext
+  private readonly context: ExtendedContext
 
-  constructor(octokit: InstanceType<typeof GitHub>, context: EnhancedContext) {
+  constructor(octokit: InstanceType<typeof GitHub>, context: ExtendedContext) {
     this.octokit = octokit
     this.context = context
   }

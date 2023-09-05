@@ -9,7 +9,7 @@ const prEvents = [
 ]
 const REFS_REGEX = RegExp('refs/(heads|tags)/')
 
-export interface EnhancedContext extends Context {
+export interface ExtendedContext extends Context {
   isPullRequest(): boolean
   getSha(): string
   getCurrentBranchName(): string
@@ -17,7 +17,7 @@ export interface EnhancedContext extends Context {
   getLinkToFile(filePath: string, line?: number): string
 }
 
-export function extendContext(context: Context): EnhancedContext {
+export function extendContext(context: Context): ExtendedContext {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions,@typescript-eslint/no-explicit-any
   const result = <any>context
 
@@ -53,4 +53,4 @@ export function extendContext(context: Context): EnhancedContext {
   return result
 }
 
-export const enhancedContext: EnhancedContext = extendContext(github.context)
+export const extendedContext: ExtendedContext = extendContext(github.context)
