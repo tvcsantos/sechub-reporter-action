@@ -9659,9 +9659,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ActionOrchestrator = void 0;
-const fs = __importStar(__nccwpck_require__(3292));
 const check_1 = __nccwpck_require__(6149);
 const inputs_1 = __nccwpck_require__(8767);
 const github = __importStar(__nccwpck_require__(5438));
@@ -9672,7 +9674,8 @@ const check_reporter_1 = __nccwpck_require__(3348);
 const summary_reporter_1 = __nccwpck_require__(867);
 const core = __importStar(__nccwpck_require__(2186));
 const sechub_report_generator_1 = __nccwpck_require__(8900);
-const enhanced_context_1 = __nccwpck_require__(9660);
+const promises_1 = __importDefault(__nccwpck_require__(3292));
+const extended_context_1 = __nccwpck_require__(3634);
 const FILE_ENCODING = 'utf-8';
 class ActionOrchestrator {
     gitHubCheck = null;
@@ -9684,9 +9687,9 @@ class ActionOrchestrator {
     async getReporter(mode) {
         switch (mode) {
             case inputs_1.ModeOption.PR_COMMENT:
-                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.getOctokit(), enhanced_context_1.enhancedContext));
+                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.getOctokit(), extended_context_1.extendedContext));
             case inputs_1.ModeOption.CHECK: {
-                const gitHubCheckCreator = new check_1.GitHubCheckCreator(this.getOctokit(), enhanced_context_1.enhancedContext);
+                const gitHubCheckCreator = new check_1.GitHubCheckCreator(this.getOctokit(), extended_context_1.extendedContext);
                 this.gitHubCheck = await gitHubCheckCreator.create(constants_1.CHECK_NAME);
                 return new check_reporter_1.CheckReporter(this.gitHubCheck);
             }
@@ -9703,27 +9706,36 @@ class ActionOrchestrator {
         }
         return result;
     }
+    async parseReport() {
+        // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
+        const fileContents = await promises_1.default.readFile(this.inputs.file, {
+            encoding: FILE_ENCODING
+        });
+        return JSON.parse(fileContents);
+    }
+    async doReports(reportData, reporters) {
+        const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(extended_context_1.extendedContext);
+        const reportResults = new Map();
+        let failed = false;
+        for (const reporter of reporters) {
+            let reportResult = reportResults.get(reporter.maxSize);
+            if (reportResult === undefined) {
+                reportResult = await reportGenerator.generateReport(reportData, {
+                    maxSize: reporter.maxSize ?? undefined
+                });
+                reportResults.set(reporter.maxSize, reportResult);
+            }
+            failed &&= reportResult.failed;
+            await reporter.report(reportResult);
+        }
+        return failed;
+    }
     async execute(inputs) {
         this.inputs = inputs;
         const reporters = await this.getReporters();
         try {
-            const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(enhanced_context_1.enhancedContext);
-            const fileContents = await fs.readFile(this.inputs.file, {
-                encoding: FILE_ENCODING
-            });
-            const reportData = JSON.parse(fileContents);
-            const fullReportResult = await reportGenerator.generateReport(reportData, {});
-            let failed = false;
-            for (const reporter of reporters) {
-                let reportResult = fullReportResult;
-                if (reporter.maxSize != null) {
-                    reportResult = await reportGenerator.generateReport(reportData, {
-                        maxSize: reporter.maxSize
-                    });
-                }
-                failed &&= reportResult.failed;
-                await reporter.report(reportResult);
-            }
+            const report = await this.parseReport();
+            const failed = await this.doReports(report, reporters);
             return failed && this.inputs.failOnError ? 1 : 0;
         }
         catch (e) {
@@ -9943,7 +9955,7 @@ exports.GitHubPRCommenter = GitHubPRCommenter;
 
 /***/ }),
 
-/***/ 9660:
+/***/ 3634:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -9972,7 +9984,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.enhancedContext = exports.extendContext = void 0;
+exports.extendedContext = exports.extendContext = void 0;
 const github = __importStar(__nccwpck_require__(5438));
 const prEvents = [
     'pull_request',
@@ -10009,7 +10021,7 @@ function extendContext(context) {
     return result;
 }
 exports.extendContext = extendContext;
-exports.enhancedContext = extendContext(github.context);
+exports.extendedContext = extendContext(github.context);
 
 
 /***/ }),
@@ -10095,7 +10107,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.gatherInputs = exports.ModeOption = exports.Input = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const enhanced_context_1 = __nccwpck_require__(9660);
+const extended_context_1 = __nccwpck_require__(3634);
 var Input;
 (function (Input) {
     Input["FILE"] = "file";
@@ -10135,7 +10147,7 @@ const NOT_IN_PR_CONTEXT_WARNING = "Selected 'pr-comment' mode but the action is 
 const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK = "No additional mode selected, using 'check' mode.";
 function getInputModes() {
     const modes = new Set(internalGetInputModes());
-    const isPullRequest = enhanced_context_1.enhancedContext.isPullRequest();
+    const isPullRequest = extended_context_1.extendedContext.isPullRequest();
     if (modes.size <= 0) {
         if (isPullRequest) {
             modes.add(ModeOption.PR_COMMENT);
