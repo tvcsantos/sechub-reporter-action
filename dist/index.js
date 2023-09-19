@@ -10355,11 +10355,11 @@ class SecHubReportGenerator {
             };
         }
         const doNotConsiderErrorIfSeveritiesFound = properties.considerErrorOnSeverities.includes(inputs_1.Severity.NONE);
-        const errorOnAllSeverities = findings.length > 0 &&
+        const considerErrorOnAllSeverities = findings.length > 0 &&
             properties.considerErrorOnSeverities.includes(inputs_1.Severity.ALL);
-        const errorOnOtherSeverities = () => findings.some(x => properties.considerErrorOnSeverities.includes(x.severity));
+        const considerErrorOnOtherSeverities = () => findings.some(x => properties.considerErrorOnSeverities.includes(x.severity));
         const failed = !doNotConsiderErrorIfSeveritiesFound &&
-            (errorOnAllSeverities || errorOnOtherSeverities());
+            (considerErrorOnAllSeverities || considerErrorOnOtherSeverities());
         const textBuilder = new text_builder_1.TextBuilder(properties.maxSize);
         this.addTitleToTextBuilder(textBuilder, failed);
         this.addHeaderToTextBuilder(textBuilder);

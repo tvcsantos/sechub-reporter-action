@@ -131,17 +131,17 @@ export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
 
     const doNotConsiderErrorIfSeveritiesFound =
       properties.considerErrorOnSeverities.includes(Severity.NONE)
-    const errorOnAllSeverities =
+    const considerErrorOnAllSeverities =
       findings.length > 0 &&
       properties.considerErrorOnSeverities.includes(Severity.ALL)
-    const errorOnOtherSeverities = (): boolean =>
+    const considerErrorOnOtherSeverities = (): boolean =>
       findings.some(x =>
         properties.considerErrorOnSeverities.includes(x.severity)
       )
 
     const failed =
       !doNotConsiderErrorIfSeveritiesFound &&
-      (errorOnAllSeverities || errorOnOtherSeverities())
+      (considerErrorOnAllSeverities || considerErrorOnOtherSeverities())
 
     const textBuilder = new TextBuilder(properties.maxSize)
 
