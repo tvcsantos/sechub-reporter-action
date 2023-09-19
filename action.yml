@@ -32,7 +32,7 @@ inputs:
       the following special values:
       - NONE - if you don't want to consider any severity as error
       - ALL - if you want to consider on all severities as errors
-    default: NONE
+    default: ALL
 runs:
   using: 'node16'
   main: 'dist/index.js'
