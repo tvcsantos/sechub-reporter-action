@@ -9725,7 +9725,7 @@ class ActionOrchestrator {
                 });
                 reportResults.set(reporter.maxSize, reportResult);
             }
-            failed &&= reportResult.failed;
+            failed ||= reportResult.failed;
             await reporter.report(reportResult);
         }
         return failed;
