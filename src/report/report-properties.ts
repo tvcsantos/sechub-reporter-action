@@ -1,4 +1,4 @@
 export interface ReportProperties {
   maxSize?: number
-  failOnSeverities: string[]
+  errorOnSeverities: string[]
 }

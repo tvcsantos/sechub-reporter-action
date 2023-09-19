@@ -129,17 +129,16 @@ export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
       }
     }
 
-    const doNotFailIfSeveritiesFound = properties.failOnSeverities.includes(
-      Severity.NONE
-    )
-    const failOnAllSeverities =
-      findings.length > 0 && properties.failOnSeverities.includes(Severity.ALL)
-    const failOnOtherSeverities = (): boolean =>
-      findings.some(x => properties.failOnSeverities.includes(x.severity))
+    const doNotConsiderErrorIfSeveritiesFound =
+      properties.errorOnSeverities.includes(Severity.NONE)
+    const errorOnAllSeverities =
+      findings.length > 0 && properties.errorOnSeverities.includes(Severity.ALL)
+    const errorOnOtherSeverities = (): boolean =>
+      findings.some(x => properties.errorOnSeverities.includes(x.severity))
 
     const failed =
-      !doNotFailIfSeveritiesFound &&
-      (failOnAllSeverities || failOnOtherSeverities())
+      !doNotConsiderErrorIfSeveritiesFound &&
+      (errorOnAllSeverities || errorOnOtherSeverities())
 
     const textBuilder = new TextBuilder(properties.maxSize)
 

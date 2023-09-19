@@ -9723,7 +9723,7 @@ class ActionOrchestrator {
                 reportResult = await reportGenerator.generateReport(reportData, {
                     maxSize: reporter.maxSize ?? undefined,
                     // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
-                    failOnSeverities: this.inputs.failOnSeverities
+                    errorOnSeverities: this.inputs.errorOnSeverities
                 });
                 reportResults.set(reporter.maxSize, reportResult);
             }
@@ -9738,7 +9738,7 @@ class ActionOrchestrator {
         try {
             const report = await this.parseReport();
             const failed = await this.doReports(report, reporters);
-            return failed ? 1 : 0;
+            return failed && this.inputs.failOnError ? 1 : 0;
         }
         catch (e) {
             this.gitHubCheck?.cancel();
@@ -10133,8 +10133,9 @@ function gatherInputs() {
     const file = getInputFile();
     const modes = getInputModes();
     const token = getInputToken();
-    const failOnSeverities = getInputFailOnSeverities();
-    return { file, modes, token, failOnSeverities };
+    const failOnError = getInputFailOnError();
+    const errorOnSeverities = getInputErrorOnSeverities();
+    return { file, modes, token, failOnError, errorOnSeverities };
 }
 exports.gatherInputs = gatherInputs;
 function getInputFile() {
@@ -10176,7 +10177,10 @@ function getInputModes() {
 function getInputToken() {
     return core.getInput(Input.GITHUB_TOKEN, { required: true });
 }
-function getInputFailOnSeverities() {
+function getInputFailOnError() {
+    return core.getBooleanInput(Input.FAIL_ON_ERROR);
+}
+function getInputErrorOnSeverities() {
     const multilineInput = core.getMultilineInput(Input.FAIL_ON_SEVERITIES);
     const nonEmptyResult = multilineInput.filter(x => !!x);
     let uniqueResult = Array.from(new Set(nonEmptyResult));
@@ -10350,11 +10354,11 @@ class SecHubReportGenerator {
                 hasErrors: false
             };
         }
-        const doNotFailIfSeveritiesFound = properties.failOnSeverities.includes(inputs_1.Severity.NONE);
-        const failOnAllSeverities = findings.length > 0 && properties.failOnSeverities.includes(inputs_1.Severity.ALL);
-        const failOnOtherSeverities = () => findings.some(x => properties.failOnSeverities.includes(x.severity));
-        const failed = !doNotFailIfSeveritiesFound &&
-            (failOnAllSeverities || failOnOtherSeverities());
+        const doNotConsiderErrorIfSeveritiesFound = properties.errorOnSeverities.includes(inputs_1.Severity.NONE);
+        const errorOnAllSeverities = findings.length > 0 && properties.errorOnSeverities.includes(inputs_1.Severity.ALL);
+        const errorOnOtherSeverities = () => findings.some(x => properties.errorOnSeverities.includes(x.severity));
+        const failed = !doNotConsiderErrorIfSeveritiesFound &&
+            (errorOnAllSeverities || errorOnOtherSeverities());
         const textBuilder = new text_builder_1.TextBuilder(properties.maxSize);
         this.addTitleToTextBuilder(textBuilder, failed);
         this.addHeaderToTextBuilder(textBuilder);

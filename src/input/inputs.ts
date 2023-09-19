@@ -5,7 +5,8 @@ export interface Inputs {
   file: string
   modes: Set<ModeOption>
   token: string
-  failOnSeverities: string[]
+  failOnError: boolean
+  errorOnSeverities: string[]
 }
 
 export enum Input {
@@ -31,8 +32,9 @@ export function gatherInputs(): Inputs {
   const file = getInputFile()
   const modes = getInputModes()
   const token = getInputToken()
-  const failOnSeverities = getInputFailOnSeverities()
-  return { file, modes, token, failOnSeverities }
+  const failOnError = getInputFailOnError()
+  const errorOnSeverities = getInputErrorOnSeverities()
+  return { file, modes, token, failOnError, errorOnSeverities }
 }
 
 function getInputFile(): string {
@@ -61,6 +63,7 @@ const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK =
   "No additional mode selected, using 'check' mode."
 const SEVERITY_ALL_TAKES_PRECEDENCE_WARNING =
   "Selected 'ALL' on fail-on-severities with other finer grained severities. Severity 'ALL' takes precedence."
+
 function getInputModes(): Set<ModeOption> {
   const modes = new Set(internalGetInputModes())
   const isPullRequest = extendedContext.isPullRequest()
@@ -85,7 +88,11 @@ function getInputToken(): string {
   return core.getInput(Input.GITHUB_TOKEN, { required: true })
 }
 
-function getInputFailOnSeverities(): string[] {
+function getInputFailOnError(): boolean {
+  return core.getBooleanInput(Input.FAIL_ON_ERROR)
+}
+
+function getInputErrorOnSeverities(): string[] {
   const multilineInput = core.getMultilineInput(Input.FAIL_ON_SEVERITIES)
   const nonEmptyResult = multilineInput.filter(x => !!x)
   let uniqueResult = Array.from(new Set(nonEmptyResult))
