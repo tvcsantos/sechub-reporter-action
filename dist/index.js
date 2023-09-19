@@ -9721,7 +9721,9 @@ class ActionOrchestrator {
             let reportResult = reportResults.get(reporter.maxSize);
             if (reportResult === undefined) {
                 reportResult = await reportGenerator.generateReport(reportData, {
-                    maxSize: reporter.maxSize ?? undefined
+                    maxSize: reporter.maxSize ?? undefined,
+                    // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
+                    failOnSeverities: this.inputs.failOnSeverities
                 });
                 reportResults.set(reporter.maxSize, reportResult);
             }
@@ -9736,7 +9738,7 @@ class ActionOrchestrator {
         try {
             const report = await this.parseReport();
             const failed = await this.doReports(report, reporters);
-            return failed && this.inputs.failOnError ? 1 : 0;
+            return failed ? 1 : 0;
         }
         catch (e) {
             this.gitHubCheck?.cancel();
@@ -10105,7 +10107,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.gatherInputs = exports.ModeOption = exports.Input = void 0;
+exports.gatherInputs = exports.Severity = exports.ModeOption = exports.Input = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const extended_context_1 = __nccwpck_require__(3634);
 var Input;
@@ -10114,6 +10116,7 @@ var Input;
     Input["MODES"] = "modes";
     Input["GITHUB_TOKEN"] = "token";
     Input["FAIL_ON_ERROR"] = "fail-on-error";
+    Input["FAIL_ON_SEVERITIES"] = "fail-on-severities";
 })(Input || (exports.Input = Input = {}));
 var ModeOption;
 (function (ModeOption) {
@@ -10121,12 +10124,17 @@ var ModeOption;
     ModeOption["CHECK"] = "check";
     ModeOption["SUMMARY"] = "summary";
 })(ModeOption || (exports.ModeOption = ModeOption = {}));
+var Severity;
+(function (Severity) {
+    Severity["NONE"] = "NONE";
+    Severity["ALL"] = "ALL";
+})(Severity || (exports.Severity = Severity = {}));
 function gatherInputs() {
     const file = getInputFile();
     const modes = getInputModes();
     const token = getInputToken();
-    const failOnError = getInputFailOnError();
-    return { file, modes, token, failOnError };
+    const failOnSeverities = getInputFailOnSeverities();
+    return { file, modes, token, failOnSeverities };
 }
 exports.gatherInputs = gatherInputs;
 function getInputFile() {
@@ -10145,6 +10153,7 @@ function internalGetInputModes() {
 }
 const NOT_IN_PR_CONTEXT_WARNING = "Selected 'pr-comment' mode but the action is not running in a pull request context. Ignoring this mode.";
 const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK = "No additional mode selected, using 'check' mode.";
+const SEVERITY_ALL_TAKES_PRECEDENCE_WARNING = "Selected 'ALL' on fail-on-severities with other finer grained severities. Severity 'ALL' takes precedence.";
 function getInputModes() {
     const modes = new Set(internalGetInputModes());
     const isPullRequest = extended_context_1.extendedContext.isPullRequest();
@@ -10167,8 +10176,18 @@ function getInputModes() {
 function getInputToken() {
     return core.getInput(Input.GITHUB_TOKEN, { required: true });
 }
-function getInputFailOnError() {
-    return core.getBooleanInput(Input.FAIL_ON_ERROR);
+function getInputFailOnSeverities() {
+    const multilineInput = core.getMultilineInput(Input.FAIL_ON_SEVERITIES);
+    const nonEmptyResult = multilineInput.filter(x => !!x);
+    let uniqueResult = Array.from(new Set(nonEmptyResult));
+    if (uniqueResult.includes(Severity.NONE) && uniqueResult.length > 1) {
+        throw new Error(`Severity '${Severity.NONE}' incompatible with other severities provided! '${JSON.stringify(multilineInput)}'`);
+    }
+    if (uniqueResult.includes(Severity.ALL) && uniqueResult.length > 1) {
+        core.warning(SEVERITY_ALL_TAKES_PRECEDENCE_WARNING);
+        uniqueResult = [Severity.ALL];
+    }
+    return uniqueResult;
 }
 // Add methods for your extra inputs
 // Pattern: function getInput<input-name>(): <type>
@@ -10244,10 +10263,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SecHubReportGenerator = void 0;
 const utils_1 = __nccwpck_require__(239);
 const text_builder_1 = __nccwpck_require__(8758);
+const inputs_1 = __nccwpck_require__(8767);
 const HEADER = '| Severity | Type | Location | Relevant part | Source';
 const HEADER_ALIGNMENT = '|-|-|-|-|-|';
 const SUCCESS_COMMENT = '# :white_check_mark: SecHub - No findings detected on your code base!';
-const FAIL_COMMENT = '# :x: SecHub - We detected some findings on your code base!';
+const FAIL_COMMENT = (fail) => `# ${fail ? ':x:' : ':warning:'} SecHub - We detected some findings on your code base!`;
 const CWE_LINK = (id) => `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`;
 class SecHubReportGenerator {
     context;
@@ -10302,8 +10322,8 @@ class SecHubReportGenerator {
             .join(' | ');
         return `| ${result} |`;
     }
-    addTitleToTextBuilder(textBuilder) {
-        textBuilder.addLines(FAIL_COMMENT);
+    addTitleToTextBuilder(textBuilder, failed) {
+        textBuilder.addLines(FAIL_COMMENT(failed));
     }
     addHeaderToTextBuilder(textBuilder) {
         textBuilder.addLines(HEADER, HEADER_ALIGNMENT);
@@ -10323,13 +10343,28 @@ class SecHubReportGenerator {
     async generateReport(reportData, properties) {
         const findings = reportData.result.findings ?? [];
         if (findings.length <= 0) {
-            return { report: SUCCESS_COMMENT, failed: false, truncated: false };
+            return {
+                report: SUCCESS_COMMENT,
+                failed: false,
+                truncated: false,
+                hasErrors: false
+            };
         }
+        const doNotFailIfSeveritiesFound = properties.failOnSeverities.includes(inputs_1.Severity.NONE);
+        const failOnAllSeverities = findings.length > 0 && properties.failOnSeverities.includes(inputs_1.Severity.ALL);
+        const failOnOtherSeverities = () => findings.some(x => properties.failOnSeverities.includes(x.severity));
+        const failed = !doNotFailIfSeveritiesFound &&
+            (failOnAllSeverities || failOnOtherSeverities());
         const textBuilder = new text_builder_1.TextBuilder(properties.maxSize);
-        this.addTitleToTextBuilder(textBuilder);
+        this.addTitleToTextBuilder(textBuilder, failed);
         this.addHeaderToTextBuilder(textBuilder);
-        const result = await this.addContentToTextBuilder(textBuilder, findings);
-        return { report: textBuilder.build(), failed: true, truncated: result };
+        const isContentTruncated = await this.addContentToTextBuilder(textBuilder, findings);
+        return {
+            report: textBuilder.build(),
+            failed,
+            truncated: isContentTruncated,
+            hasErrors: findings.length > 0
+        };
     }
 }
 exports.SecHubReportGenerator = SecHubReportGenerator;
