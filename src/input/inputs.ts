@@ -5,14 +5,15 @@ export interface Inputs {
   file: string
   modes: Set<ModeOption>
   token: string
-  failOnError: boolean
+  failOnSeverities: string[]
 }
 
 export enum Input {
   FILE = 'file',
   MODES = 'modes',
   GITHUB_TOKEN = 'token',
-  FAIL_ON_ERROR = 'fail-on-error'
+  FAIL_ON_ERROR = 'fail-on-error',
+  FAIL_ON_SEVERITIES = 'fail-on-severities'
 }
 
 export enum ModeOption {
@@ -21,12 +22,17 @@ export enum ModeOption {
   SUMMARY = 'summary'
 }
 
+export enum Severity {
+  NONE = 'NONE',
+  ALL = 'ALL'
+}
+
 export function gatherInputs(): Inputs {
   const file = getInputFile()
   const modes = getInputModes()
   const token = getInputToken()
-  const failOnError = getInputFailOnError()
-  return { file, modes, token, failOnError }
+  const failOnSeverities = getInputFailOnSeverities()
+  return { file, modes, token, failOnSeverities }
 }
 
 function getInputFile(): string {
@@ -53,7 +59,8 @@ const NOT_IN_PR_CONTEXT_WARNING =
   "Selected 'pr-comment' mode but the action is not running in a pull request context. Ignoring this mode."
 const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK =
   "No additional mode selected, using 'check' mode."
-
+const SEVERITY_ALL_TAKES_PRECEDENCE_WARNING =
+  "Selected 'ALL' on fail-on-severities with other finer grained severities. Severity 'ALL' takes precedence."
 function getInputModes(): Set<ModeOption> {
   const modes = new Set(internalGetInputModes())
   const isPullRequest = extendedContext.isPullRequest()
@@ -78,8 +85,24 @@ function getInputToken(): string {
   return core.getInput(Input.GITHUB_TOKEN, { required: true })
 }
 
-function getInputFailOnError(): boolean {
-  return core.getBooleanInput(Input.FAIL_ON_ERROR)
+function getInputFailOnSeverities(): string[] {
+  const multilineInput = core.getMultilineInput(Input.FAIL_ON_SEVERITIES)
+  const nonEmptyResult = multilineInput.filter(x => !!x)
+  let uniqueResult = Array.from(new Set(nonEmptyResult))
+  if (uniqueResult.includes(Severity.NONE) && uniqueResult.length > 1) {
+    throw new Error(
+      `Severity '${
+        Severity.NONE
+      }' incompatible with other severities provided! '${JSON.stringify(
+        multilineInput
+      )}'`
+    )
+  }
+  if (uniqueResult.includes(Severity.ALL) && uniqueResult.length > 1) {
+    core.warning(SEVERITY_ALL_TAKES_PRECEDENCE_WARNING)
+    uniqueResult = [Severity.ALL]
+  }
+  return uniqueResult
 }
 
 // Add methods for your extra inputs

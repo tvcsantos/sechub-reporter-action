@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2023-09-19
+
+### Added
+
+- Add `fail-on-severities` input for failing the action based on severities 
+
 ## [1.4.1] - 2023-09-19
 
 ### Fixed
@@ -56,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implement `sechub-reporter-action` github action
 
-[Unreleased]: https://github.com/tvcsantos/sechub-reporter-action/compare/v1.4.1...main
+[Unreleased]: https://github.com/tvcsantos/sechub-reporter-action/compare/v2.0.0...main
+[2.0.0]: https://github.com/tvcsantos/sechub-reporter-action/compare/v1.4.1...v2.0.0
 [1.4.1]: https://github.com/tvcsantos/sechub-reporter-action/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/tvcsantos/sechub-reporter-action/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/tvcsantos/sechub-reporter-action/compare/v1.2.0...v1.3.0

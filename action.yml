@@ -20,10 +20,15 @@ inputs:
     required: true
     description: 'Your GitHub token'
     default: ${{ github.token }}
-  fail-on-error:
+  fail-on-severities:
     required: false
-    description: 'Fail the action if errors are found on the report'
-    default: 'false'
+    description: |-
+      Fail the action if the given severities occur.
+      In addition to the severities supported by SecHub we have
+      the following special values:
+      - NONE - if you don't want to fail the action when severities found
+      - ALL - if you want to fail on all severities
+    default: NONE
 runs:
   using: 'node16'
   main: 'dist/index.js'

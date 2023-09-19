@@ -38,10 +38,11 @@ jobs:
           modes: |
             pr-comment
             check
-  test-fail-on-error:
+  test-fail-on-severities:
     strategy:
       matrix:
         file: [ sechub-result-error.json, sechub-result-ok.json ]
+        fail-on-severities: [ALL, NONE, HIGH, MEDIUM, LOW]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -51,5 +52,5 @@ jobs:
         with:
           file: ./__tests__/${{ matrix.file }}
           modes: summary
-          fail-on-error: true
+          fail-on-severities: ${{ matrix.fail-on-severities }}
         continue-on-error: true

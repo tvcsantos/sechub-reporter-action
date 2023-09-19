@@ -5,13 +5,16 @@ import { ExtendedContext } from '../github/extended-context'
 import { pre } from '../utils/utils'
 import { ReportProperties } from './report-properties'
 import { TextBuilder } from './text-builder'
+import { Severity } from '../input/inputs'
 
 const HEADER = '| Severity | Type | Location | Relevant part | Source'
 const HEADER_ALIGNMENT = '|-|-|-|-|-|'
 const SUCCESS_COMMENT =
   '# :white_check_mark: SecHub - No findings detected on your code base!'
-const FAIL_COMMENT =
-  '# :x: SecHub - We detected some findings on your code base!'
+const FAIL_COMMENT = (fail: boolean): string =>
+  `# ${
+    fail ? ':x:' : ':warning:'
+  } SecHub - We detected some findings on your code base!`
 const CWE_LINK = (id: number): string =>
   `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`
 
@@ -84,8 +87,11 @@ export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
     return `| ${result} |`
   }
 
-  private addTitleToTextBuilder(textBuilder: TextBuilder): void {
-    textBuilder.addLines(FAIL_COMMENT)
+  private addTitleToTextBuilder(
+    textBuilder: TextBuilder,
+    failed: boolean
+  ): void {
+    textBuilder.addLines(FAIL_COMMENT(failed))
   }
 
   private addHeaderToTextBuilder(textBuilder: TextBuilder): void {
@@ -115,15 +121,40 @@ export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
     const findings: SecHubFinding[] = reportData.result.findings ?? []
 
     if (findings.length <= 0) {
-      return { report: SUCCESS_COMMENT, failed: false, truncated: false }
+      return {
+        report: SUCCESS_COMMENT,
+        failed: false,
+        truncated: false,
+        hasErrors: false
+      }
     }
+
+    const doNotFailIfSeveritiesFound = properties.failOnSeverities.includes(
+      Severity.NONE
+    )
+    const failOnAllSeverities =
+      findings.length > 0 && properties.failOnSeverities.includes(Severity.ALL)
+    const failOnOtherSeverities = (): boolean =>
+      findings.some(x => properties.failOnSeverities.includes(x.severity))
+
+    const failed =
+      !doNotFailIfSeveritiesFound &&
+      (failOnAllSeverities || failOnOtherSeverities())
 
     const textBuilder = new TextBuilder(properties.maxSize)
 
-    this.addTitleToTextBuilder(textBuilder)
+    this.addTitleToTextBuilder(textBuilder, failed)
     this.addHeaderToTextBuilder(textBuilder)
-    const result = await this.addContentToTextBuilder(textBuilder, findings)
+    const isContentTruncated = await this.addContentToTextBuilder(
+      textBuilder,
+      findings
+    )
 
-    return { report: textBuilder.build(), failed: true, truncated: result }
+    return {
+      report: textBuilder.build(),
+      failed,
+      truncated: isContentTruncated,
+      hasErrors: findings.length > 0
+    }
   }
 }

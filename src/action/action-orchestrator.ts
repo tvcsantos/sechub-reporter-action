@@ -80,7 +80,9 @@ export class ActionOrchestrator {
 
       if (reportResult === undefined) {
         reportResult = await reportGenerator.generateReport(reportData, {
-          maxSize: reporter.maxSize ?? undefined
+          maxSize: reporter.maxSize ?? undefined,
+          // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
+          failOnSeverities: this.inputs!!.failOnSeverities
         })
         reportResults.set(reporter.maxSize, reportResult)
       }
@@ -101,7 +103,7 @@ export class ActionOrchestrator {
 
       const failed = await this.doReports(report, reporters)
 
-      return failed && this.inputs.failOnError ? 1 : 0
+      return failed ? 1 : 0
     } catch (e) {
       this.gitHubCheck?.cancel()
       throw e
