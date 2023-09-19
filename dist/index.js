@@ -10116,7 +10116,7 @@ var Input;
     Input["MODES"] = "modes";
     Input["GITHUB_TOKEN"] = "token";
     Input["FAIL_ON_ERROR"] = "fail-on-error";
-    Input["FAIL_ON_SEVERITIES"] = "fail-on-severities";
+    Input["ERROR_ON_SEVERITIES"] = "error-on-severities";
 })(Input || (exports.Input = Input = {}));
 var ModeOption;
 (function (ModeOption) {
@@ -10181,7 +10181,7 @@ function getInputFailOnError() {
     return core.getBooleanInput(Input.FAIL_ON_ERROR);
 }
 function getInputErrorOnSeverities() {
-    const multilineInput = core.getMultilineInput(Input.FAIL_ON_SEVERITIES);
+    const multilineInput = core.getMultilineInput(Input.ERROR_ON_SEVERITIES);
     const nonEmptyResult = multilineInput.filter(x => !!x);
     let uniqueResult = Array.from(new Set(nonEmptyResult));
     if (uniqueResult.includes(Severity.NONE) && uniqueResult.length > 1) {

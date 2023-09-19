@@ -14,7 +14,7 @@ export enum Input {
   MODES = 'modes',
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
-  FAIL_ON_SEVERITIES = 'fail-on-severities'
+  ERROR_ON_SEVERITIES = 'error-on-severities'
 }
 
 export enum ModeOption {
@@ -93,7 +93,7 @@ function getInputFailOnError(): boolean {
 }
 
 function getInputErrorOnSeverities(): string[] {
-  const multilineInput = core.getMultilineInput(Input.FAIL_ON_SEVERITIES)
+  const multilineInput = core.getMultilineInput(Input.ERROR_ON_SEVERITIES)
   const nonEmptyResult = multilineInput.filter(x => !!x)
   let uniqueResult = Array.from(new Set(nonEmptyResult))
   if (uniqueResult.includes(Severity.NONE) && uniqueResult.length > 1) {
