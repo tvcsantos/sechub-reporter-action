@@ -5,7 +5,8 @@ export interface Inputs {
   file: string
   modes: Set<ModeOption>
   token: string
-  failOnSeverities: string[]
+  failOnError: boolean
+  considerErrorOnSeverities: string[]
 }
 
 export enum Input {
@@ -13,7 +14,7 @@ export enum Input {
   MODES = 'modes',
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
-  FAIL_ON_SEVERITIES = 'fail-on-severities'
+  CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities'
 }
 
 export enum ModeOption {
@@ -31,8 +32,9 @@ export function gatherInputs(): Inputs {
   const file = getInputFile()
   const modes = getInputModes()
   const token = getInputToken()
-  const failOnSeverities = getInputFailOnSeverities()
-  return { file, modes, token, failOnSeverities }
+  const failOnError = getInputFailOnError()
+  const considerErrorOnSeverities = getInputConsiderErrorOnSeverities()
+  return { file, modes, token, failOnError, considerErrorOnSeverities }
 }
 
 function getInputFile(): string {
@@ -61,6 +63,7 @@ const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK =
   "No additional mode selected, using 'check' mode."
 const SEVERITY_ALL_TAKES_PRECEDENCE_WARNING =
   "Selected 'ALL' on fail-on-severities with other finer grained severities. Severity 'ALL' takes precedence."
+
 function getInputModes(): Set<ModeOption> {
   const modes = new Set(internalGetInputModes())
   const isPullRequest = extendedContext.isPullRequest()
@@ -85,8 +88,14 @@ function getInputToken(): string {
   return core.getInput(Input.GITHUB_TOKEN, { required: true })
 }
 
-function getInputFailOnSeverities(): string[] {
-  const multilineInput = core.getMultilineInput(Input.FAIL_ON_SEVERITIES)
+function getInputFailOnError(): boolean {
+  return core.getBooleanInput(Input.FAIL_ON_ERROR)
+}
+
+function getInputConsiderErrorOnSeverities(): string[] {
+  const multilineInput = core.getMultilineInput(
+    Input.CONSIDER_ERROR_ON_SEVERITIES
+  )
   const nonEmptyResult = multilineInput.filter(x => !!x)
   let uniqueResult = Array.from(new Set(nonEmptyResult))
   if (uniqueResult.includes(Severity.NONE) && uniqueResult.length > 1) {
