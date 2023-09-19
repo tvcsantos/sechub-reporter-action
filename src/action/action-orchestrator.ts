@@ -82,7 +82,7 @@ export class ActionOrchestrator {
         reportResult = await reportGenerator.generateReport(reportData, {
           maxSize: reporter.maxSize ?? undefined,
           // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
-          errorOnSeverities: this.inputs!!.errorOnSeverities
+          considerErrorOnSeverities: this.inputs!!.considerErrorOnSeverities
         })
         reportResults.set(reporter.maxSize, reportResult)
       }

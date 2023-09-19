@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Remove `fail-on-severities` and separate in two flags
-  - Add `error-on-severities` to consider specific severities as errors
+  - Add `consider-error-on-severities` to consider specific severities as errors
   - Re-add `fail-on-error` to fail the action if an error occurs
 
 ## [2.0.0] - 2023-09-19

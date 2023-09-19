@@ -42,7 +42,7 @@ jobs:
     strategy:
       matrix:
         file: [ sechub-result-error.json, sechub-result-ok.json ]
-        error-on-severities: [ALL, NONE, HIGH, MEDIUM, LOW]
+        consider-error-on-severities: [ALL, NONE, HIGH, MEDIUM, LOW]
         fail-on-error: [true, false]
     runs-on: ubuntu-latest
     steps:
@@ -54,5 +54,5 @@ jobs:
           file: ./__tests__/${{ matrix.file }}
           modes: summary
           fail-on-error: ${{ matrix.fail-on-error }}
-          error-on-severities: ${{ matrix.error-on-severities }}
+          consider-error-on-severities: ${{ matrix.consider-error-on-severities }}
         continue-on-error: true

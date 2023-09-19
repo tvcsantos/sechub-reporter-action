@@ -9723,7 +9723,7 @@ class ActionOrchestrator {
                 reportResult = await reportGenerator.generateReport(reportData, {
                     maxSize: reporter.maxSize ?? undefined,
                     // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
-                    errorOnSeverities: this.inputs.errorOnSeverities
+                    considerErrorOnSeverities: this.inputs.considerErrorOnSeverities
                 });
                 reportResults.set(reporter.maxSize, reportResult);
             }
@@ -10116,7 +10116,7 @@ var Input;
     Input["MODES"] = "modes";
     Input["GITHUB_TOKEN"] = "token";
     Input["FAIL_ON_ERROR"] = "fail-on-error";
-    Input["ERROR_ON_SEVERITIES"] = "error-on-severities";
+    Input["CONSIDER_ERROR_ON_SEVERITIES"] = "consider-error-on-severities";
 })(Input || (exports.Input = Input = {}));
 var ModeOption;
 (function (ModeOption) {
@@ -10134,8 +10134,8 @@ function gatherInputs() {
     const modes = getInputModes();
     const token = getInputToken();
     const failOnError = getInputFailOnError();
-    const errorOnSeverities = getInputErrorOnSeverities();
-    return { file, modes, token, failOnError, errorOnSeverities };
+    const considerErrorOnSeverities = getInputConsiderErrorOnSeverities();
+    return { file, modes, token, failOnError, considerErrorOnSeverities };
 }
 exports.gatherInputs = gatherInputs;
 function getInputFile() {
@@ -10180,8 +10180,8 @@ function getInputToken() {
 function getInputFailOnError() {
     return core.getBooleanInput(Input.FAIL_ON_ERROR);
 }
-function getInputErrorOnSeverities() {
-    const multilineInput = core.getMultilineInput(Input.ERROR_ON_SEVERITIES);
+function getInputConsiderErrorOnSeverities() {
+    const multilineInput = core.getMultilineInput(Input.CONSIDER_ERROR_ON_SEVERITIES);
     const nonEmptyResult = multilineInput.filter(x => !!x);
     let uniqueResult = Array.from(new Set(nonEmptyResult));
     if (uniqueResult.includes(Severity.NONE) && uniqueResult.length > 1) {
@@ -10354,9 +10354,10 @@ class SecHubReportGenerator {
                 hasErrors: false
             };
         }
-        const doNotConsiderErrorIfSeveritiesFound = properties.errorOnSeverities.includes(inputs_1.Severity.NONE);
-        const errorOnAllSeverities = findings.length > 0 && properties.errorOnSeverities.includes(inputs_1.Severity.ALL);
-        const errorOnOtherSeverities = () => findings.some(x => properties.errorOnSeverities.includes(x.severity));
+        const doNotConsiderErrorIfSeveritiesFound = properties.considerErrorOnSeverities.includes(inputs_1.Severity.NONE);
+        const errorOnAllSeverities = findings.length > 0 &&
+            properties.considerErrorOnSeverities.includes(inputs_1.Severity.ALL);
+        const errorOnOtherSeverities = () => findings.some(x => properties.considerErrorOnSeverities.includes(x.severity));
         const failed = !doNotConsiderErrorIfSeveritiesFound &&
             (errorOnAllSeverities || errorOnOtherSeverities());
         const textBuilder = new text_builder_1.TextBuilder(properties.maxSize);

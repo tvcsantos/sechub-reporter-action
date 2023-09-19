@@ -24,7 +24,7 @@ inputs:
     required: false
     description: 'Fail the action if errors are found on the report'
     default: 'false'
-  error-on-severities:
+  consider-error-on-severities:
     required: false
     description: |-
       Consider the following severities as errors for this action.

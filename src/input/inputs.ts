@@ -6,7 +6,7 @@ export interface Inputs {
   modes: Set<ModeOption>
   token: string
   failOnError: boolean
-  errorOnSeverities: string[]
+  considerErrorOnSeverities: string[]
 }
 
 export enum Input {
@@ -14,7 +14,7 @@ export enum Input {
   MODES = 'modes',
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
-  ERROR_ON_SEVERITIES = 'error-on-severities'
+  CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities'
 }
 
 export enum ModeOption {
@@ -33,8 +33,8 @@ export function gatherInputs(): Inputs {
   const modes = getInputModes()
   const token = getInputToken()
   const failOnError = getInputFailOnError()
-  const errorOnSeverities = getInputErrorOnSeverities()
-  return { file, modes, token, failOnError, errorOnSeverities }
+  const considerErrorOnSeverities = getInputConsiderErrorOnSeverities()
+  return { file, modes, token, failOnError, considerErrorOnSeverities }
 }
 
 function getInputFile(): string {
@@ -92,8 +92,10 @@ function getInputFailOnError(): boolean {
   return core.getBooleanInput(Input.FAIL_ON_ERROR)
 }
 
-function getInputErrorOnSeverities(): string[] {
-  const multilineInput = core.getMultilineInput(Input.ERROR_ON_SEVERITIES)
+function getInputConsiderErrorOnSeverities(): string[] {
+  const multilineInput = core.getMultilineInput(
+    Input.CONSIDER_ERROR_ON_SEVERITIES
+  )
   const nonEmptyResult = multilineInput.filter(x => !!x)
   let uniqueResult = Array.from(new Set(nonEmptyResult))
   if (uniqueResult.includes(Severity.NONE) && uniqueResult.length > 1) {
