@@ -76,7 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implement `sechub-reporter-action` github action
 
-[Unreleased]: https://github.com/tvcsantos/sechub-reporter-action/compare/v3.0.0...main
+[Unreleased]: https://github.com/tvcsantos/sechub-reporter-action/compare/v3.1.0...main
+[3.1.0]: https://github.com/tvcsantos/sechub-reporter-action/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/tvcsantos/sechub-reporter-action/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/tvcsantos/sechub-reporter-action/compare/v1.4.1...v2.0.0
 [1.4.1]: https://github.com/tvcsantos/sechub-reporter-action/compare/v1.4.0...v1.4.1
