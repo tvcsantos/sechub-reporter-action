@@ -7,6 +7,7 @@ export interface Inputs {
   token: string
   failOnError: boolean
   considerErrorOnSeverities: string[]
+  compareMode: CompareMode
 }
 
 export enum Input {
@@ -14,7 +15,8 @@ export enum Input {
   MODES = 'modes',
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
-  CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities'
+  CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities',
+  COMPARE_MODE = 'compare-mode'
 }
 
 export enum ModeOption {
@@ -28,13 +30,27 @@ export enum Severity {
   ALL = 'ALL'
 }
 
+export enum CompareMode {
+  NONE = 'NONE',
+  ENTRY_POINT = 'ENTRY_POINT',
+  CALL_HIERARCHY = 'CALL_HIERARCHY'
+}
+
 export function gatherInputs(): Inputs {
   const file = getInputFile()
   const modes = getInputModes()
   const token = getInputToken()
   const failOnError = getInputFailOnError()
   const considerErrorOnSeverities = getInputConsiderErrorOnSeverities()
-  return { file, modes, token, failOnError, considerErrorOnSeverities }
+  const compareMode = getInputCompareMode()
+  return {
+    file,
+    modes,
+    token,
+    failOnError,
+    considerErrorOnSeverities,
+    compareMode
+  }
 }
 
 function getInputFile(): string {
@@ -57,8 +73,9 @@ function internalGetInputModes(): ModeOption[] {
     })
 }
 
-const NOT_IN_PR_CONTEXT_WARNING =
-  "Selected 'pr-comment' mode but the action is not running in a pull request context. Ignoring this mode."
+const NOT_IN_PR_CONTEXT_WARNING = (mode: string): string => {
+  return `Selected '${mode}' mode but the action is not running in a pull request context. Ignoring this mode.`
+}
 const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK =
   "No additional mode selected, using 'check' mode."
 const SEVERITY_ALL_TAKES_PRECEDENCE_WARNING =
@@ -74,7 +91,7 @@ function getInputModes(): Set<ModeOption> {
     modes.add(ModeOption.CHECK)
   }
   if (modes.has(ModeOption.PR_COMMENT) && !isPullRequest) {
-    core.warning(NOT_IN_PR_CONTEXT_WARNING)
+    core.warning(NOT_IN_PR_CONTEXT_WARNING(ModeOption.PR_COMMENT))
     modes.delete(ModeOption.PR_COMMENT)
     if (modes.size <= 0) {
       core.warning(NO_ADDITIONAL_MODE_SELECTED_USE_CHECK)
@@ -112,6 +129,24 @@ function getInputConsiderErrorOnSeverities(): string[] {
     uniqueResult = [Severity.ALL]
   }
   return uniqueResult
+}
+
+function getInputCompareMode(): CompareMode {
+  const input = core.getInput(Input.COMPARE_MODE)
+  if (!Object.values<string>(CompareMode).includes(input)) {
+    throw new Error(
+      `Invalid ${Input.COMPARE_MODE} '${input}' on input '${JSON.stringify(
+        input
+      )}'`
+    )
+  }
+  let compareMode = input as CompareMode
+  const isPullRequest = extendedContext.isPullRequest()
+  if (compareMode !== CompareMode.NONE && !isPullRequest) {
+    core.warning(NOT_IN_PR_CONTEXT_WARNING(compareMode))
+    compareMode = CompareMode.NONE
+  }
+  return compareMode
 }
 
 // Add methods for your extra inputs

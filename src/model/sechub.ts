@@ -22,4 +22,5 @@ export interface SecHubCodeFinding {
   column?: number
   source?: string
   relevantPart?: string
+  calls?: SecHubCodeFinding
 }

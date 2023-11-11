@@ -14,16 +14,16 @@ import fs from 'fs/promises'
 import { extendedContext } from '../github/extended-context'
 import { ReportResult } from '../model/report-result'
 import { SecHubReport } from '../model/sechub'
+import { ReportFindingsFilter } from '../report/report-findings-filter'
 
 const FILE_ENCODING = 'utf-8'
 
 export class ActionOrchestrator {
   private gitHubCheck: GitHubCheck | null = null
-  private inputs?: Inputs
+  private inputs!: Inputs
 
   private getOctokit(): InstanceType<typeof GitHub> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-extra-non-null-assertion
-    return github.getOctokit(this.inputs!!.token)
+    return github.getOctokit(this.inputs.token)
   }
 
   private async getReporter(mode: ModeOption): Promise<Reporter> {
@@ -50,8 +50,7 @@ export class ActionOrchestrator {
   }
 
   private async getReporters(): Promise<Reporter[]> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-extra-non-null-assertion
-    const modes = this.inputs!!.modes
+    const modes = this.inputs.modes
     const result: Reporter[] = []
     for (const mode of modes) {
       result.push(await this.getReporter(mode))
@@ -60,8 +59,7 @@ export class ActionOrchestrator {
   }
 
   private async parseReport(): Promise<SecHubReport> {
-    // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
-    const fileContents = await fs.readFile(this.inputs!!.file, {
+    const fileContents = await fs.readFile(this.inputs.file, {
       encoding: FILE_ENCODING
     })
     return JSON.parse(fileContents) as SecHubReport
@@ -71,7 +69,14 @@ export class ActionOrchestrator {
     reportData: SecHubReport,
     reporters: Reporter[]
   ): Promise<boolean> {
-    const reportGenerator = new SecHubReportGenerator(extendedContext)
+    const reportFindingsFilter = new ReportFindingsFilter(
+      this.getOctokit(),
+      extendedContext
+    )
+    const reportGenerator = new SecHubReportGenerator(
+      extendedContext,
+      reportFindingsFilter
+    )
     const reportResults = new Map<number | null, ReportResult>()
     let failed = false
 
@@ -81,8 +86,8 @@ export class ActionOrchestrator {
       if (reportResult === undefined) {
         reportResult = await reportGenerator.generateReport(reportData, {
           maxSize: reporter.maxSize ?? undefined,
-          // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
-          considerErrorOnSeverities: this.inputs!!.considerErrorOnSeverities
+          considerErrorOnSeverities: this.inputs.considerErrorOnSeverities,
+          compareMode: this.inputs.compareMode
         })
         reportResults.set(reporter.maxSize, reportResult)
       }
