@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `pr-compare-mode` input for comparing reports in PRs 
+- Add `pr-filter-mode` input for filtering report findings in PRs 
 
 ## [3.0.0] - 2023-09-19
 

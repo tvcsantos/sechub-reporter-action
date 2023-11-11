@@ -17,7 +17,7 @@ export class ReportFindingsFilterFactory {
       return new PullRequestReportFindingsFilter(
         this.octokit,
         this.context,
-        this.inputs.pullRequestCompareMode
+        this.inputs.pullRequestFilterMode
       )
     return NoOpReportFindingsFilter.getInstance()
   }

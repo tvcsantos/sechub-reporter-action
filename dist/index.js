@@ -9722,8 +9722,7 @@ class ActionOrchestrator {
             if (reportResult === undefined) {
                 reportResult = await reportGenerator.generateReport(reportData, {
                     maxSize: reporter.maxSize ?? undefined,
-                    considerErrorOnSeverities: this.inputs.considerErrorOnSeverities,
-                    pullRequestCompareMode: this.inputs.pullRequestCompareMode
+                    considerErrorOnSeverities: this.inputs.considerErrorOnSeverities
                 });
                 reportResults.set(reporter.maxSize, reportResult);
             }
@@ -10108,7 +10107,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.gatherInputs = exports.PullRequestCompareMode = exports.Severity = exports.ModeOption = exports.Input = void 0;
+exports.gatherInputs = exports.PullRequestFilterMode = exports.Severity = exports.ModeOption = exports.Input = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const extended_context_1 = __nccwpck_require__(3634);
 var Input;
@@ -10118,7 +10117,7 @@ var Input;
     Input["GITHUB_TOKEN"] = "token";
     Input["FAIL_ON_ERROR"] = "fail-on-error";
     Input["CONSIDER_ERROR_ON_SEVERITIES"] = "consider-error-on-severities";
-    Input["PR_COMPARE_MODE"] = "pr-compare-mode";
+    Input["PR_FILTER_MODE"] = "pr-filter-mode";
 })(Input || (exports.Input = Input = {}));
 var ModeOption;
 (function (ModeOption) {
@@ -10131,26 +10130,26 @@ var Severity;
     Severity["NONE"] = "NONE";
     Severity["ALL"] = "ALL";
 })(Severity || (exports.Severity = Severity = {}));
-var PullRequestCompareMode;
-(function (PullRequestCompareMode) {
-    PullRequestCompareMode["NONE"] = "NONE";
-    PullRequestCompareMode["ENTRY_POINT"] = "ENTRY_POINT";
-    PullRequestCompareMode["CALL_HIERARCHY"] = "CALL_HIERARCHY";
-})(PullRequestCompareMode || (exports.PullRequestCompareMode = PullRequestCompareMode = {}));
+var PullRequestFilterMode;
+(function (PullRequestFilterMode) {
+    PullRequestFilterMode["NONE"] = "NONE";
+    PullRequestFilterMode["ENTRY_POINT"] = "ENTRY_POINT";
+    PullRequestFilterMode["CALL_HIERARCHY"] = "CALL_HIERARCHY";
+})(PullRequestFilterMode || (exports.PullRequestFilterMode = PullRequestFilterMode = {}));
 function gatherInputs() {
     const file = getInputFile();
     const modes = getInputModes();
     const token = getInputToken();
     const failOnError = getInputFailOnError();
     const considerErrorOnSeverities = getInputConsiderErrorOnSeverities();
-    const pullRequestCompareMode = getInputPullRequestCompareMode();
+    const pullRequestFilterMode = getInputPullRequestFilterMode();
     return {
         file,
         modes,
         token,
         failOnError,
         considerErrorOnSeverities,
-        pullRequestCompareMode
+        pullRequestFilterMode
     };
 }
 exports.gatherInputs = gatherInputs;
@@ -10211,18 +10210,18 @@ function getInputConsiderErrorOnSeverities() {
     }
     return uniqueResult;
 }
-function getInputPullRequestCompareMode() {
-    const input = core.getInput(Input.PR_COMPARE_MODE);
-    if (!Object.values(PullRequestCompareMode).includes(input)) {
-        throw new Error(`Invalid ${Input.PR_COMPARE_MODE} '${input}' on input '${JSON.stringify(input)}'`);
+function getInputPullRequestFilterMode() {
+    const input = core.getInput(Input.PR_FILTER_MODE);
+    if (!Object.values(PullRequestFilterMode).includes(input)) {
+        throw new Error(`Invalid ${Input.PR_FILTER_MODE} '${input}' on input '${JSON.stringify(input)}'`);
     }
-    let compareMode = input;
+    let pullRequestFilterMode = input;
     const isPullRequest = extended_context_1.extendedContext.isPullRequest();
-    if (compareMode !== PullRequestCompareMode.NONE && !isPullRequest) {
-        core.warning(NOT_IN_PR_CONTEXT_WARNING(compareMode));
-        compareMode = PullRequestCompareMode.NONE;
+    if (pullRequestFilterMode !== PullRequestFilterMode.NONE && !isPullRequest) {
+        core.warning(NOT_IN_PR_CONTEXT_WARNING(pullRequestFilterMode));
+        pullRequestFilterMode = PullRequestFilterMode.NONE;
     }
-    return compareMode;
+    return pullRequestFilterMode;
 }
 // Add methods for your extra inputs
 // Pattern: function getInput<input-name>(): <type>
@@ -10324,14 +10323,14 @@ const inputs_1 = __nccwpck_require__(8767);
 class PullRequestReportFindingsFilter {
     octokit;
     context;
-    pullRequestCompareMode;
-    constructor(octokit, context, pullRequestCompareMode) {
+    pullRequestFilterMode;
+    constructor(octokit, context, pullRequestFilterMode) {
         this.octokit = octokit;
         this.context = context;
-        this.pullRequestCompareMode = pullRequestCompareMode;
+        this.pullRequestFilterMode = pullRequestFilterMode;
     }
     async filter(findings) {
-        if (this.pullRequestCompareMode === inputs_1.PullRequestCompareMode.NONE)
+        if (this.pullRequestFilterMode === inputs_1.PullRequestFilterMode.NONE)
             return findings;
         const { data } = await this.octokit.rest.pulls.listFiles({
             ...this.context.repo,
@@ -10348,11 +10347,11 @@ class PullRequestReportFindingsFilter {
         let found = false;
         do {
             found = currentCodeFinding.location === filename;
-            switch (this.pullRequestCompareMode) {
-                case inputs_1.PullRequestCompareMode.ENTRY_POINT:
+            switch (this.pullRequestFilterMode) {
+                case inputs_1.PullRequestFilterMode.ENTRY_POINT:
                     currentCodeFinding = undefined;
                     break;
-                case inputs_1.PullRequestCompareMode.CALL_HIERARCHY:
+                case inputs_1.PullRequestFilterMode.CALL_HIERARCHY:
                     currentCodeFinding = currentCodeFinding.calls;
                     break;
             }
@@ -10385,7 +10384,7 @@ class ReportFindingsFilterFactory {
     }
     create() {
         if (this.context.isPullRequest())
-            return new pull_request_report_findings_filter_1.PullRequestReportFindingsFilter(this.octokit, this.context, this.inputs.pullRequestCompareMode);
+            return new pull_request_report_findings_filter_1.PullRequestReportFindingsFilter(this.octokit, this.context, this.inputs.pullRequestFilterMode);
         return no_op_report_findings_filter_1.NoOpReportFindingsFilter.getInstance();
     }
 }

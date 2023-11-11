@@ -85,8 +85,7 @@ export class ActionOrchestrator {
       if (reportResult === undefined) {
         reportResult = await reportGenerator.generateReport(reportData, {
           maxSize: reporter.maxSize ?? undefined,
-          considerErrorOnSeverities: this.inputs.considerErrorOnSeverities,
-          pullRequestCompareMode: this.inputs.pullRequestCompareMode
+          considerErrorOnSeverities: this.inputs.considerErrorOnSeverities
         })
         reportResults.set(reporter.maxSize, reportResult)
       }

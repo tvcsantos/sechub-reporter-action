@@ -44,7 +44,7 @@ jobs:
         file: [ sechub-result-error.json, sechub-result-ok.json ]
         consider-error-on-severities: [ALL, NONE, HIGH, MEDIUM, LOW]
         fail-on-error: [true, false]
-        compare-mode: [NONE, ENTRY_POINT, CALL_HIERARCHY]
+        pr-filter-mode: [NONE, ENTRY_POINT, CALL_HIERARCHY]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -56,5 +56,5 @@ jobs:
           modes: summary
           fail-on-error: ${{ matrix.fail-on-error }}
           consider-error-on-severities: ${{ matrix.consider-error-on-severities }}
-          pr-compare-mode: ${{ matrix.compare-mode }}
+          pr-filter-mode: ${{ matrix.pr-filter-mode }}
         continue-on-error: true

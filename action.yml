@@ -33,13 +33,13 @@ inputs:
       - NONE - if you don't want to consider any severity as error
       - ALL - if you want to consider on all severities as errors
     default: ALL
-  pr-compare-mode:
+  pr-filter-mode:
     required: false
     description: |-
-      Compare mode for the report in PR context. The following values are supported:
-      - NONE - no comparison will be done
-      - ENTRY_POINT - compare on entry point level
-      - CALL_HIERARCHY - compare taking into account call hierarchy
+      Filter mode for report findings in PR context. The following values are supported:
+      - NONE - all findings will be reported
+      - ENTRY_POINT - findings will be filtered based on matching entry point
+      - CALL_HIERARCHY - findings will be filtered based on matching call hierarchy
     default: NONE
 runs:
   using: 'node16'

@@ -7,7 +7,7 @@ export interface Inputs {
   token: string
   failOnError: boolean
   considerErrorOnSeverities: string[]
-  pullRequestCompareMode: PullRequestCompareMode
+  pullRequestFilterMode: PullRequestFilterMode
 }
 
 export enum Input {
@@ -16,7 +16,7 @@ export enum Input {
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
   CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities',
-  PR_COMPARE_MODE = 'pr-compare-mode'
+  PR_FILTER_MODE = 'pr-filter-mode'
 }
 
 export enum ModeOption {
@@ -30,7 +30,7 @@ export enum Severity {
   ALL = 'ALL'
 }
 
-export enum PullRequestCompareMode {
+export enum PullRequestFilterMode {
   NONE = 'NONE',
   ENTRY_POINT = 'ENTRY_POINT',
   CALL_HIERARCHY = 'CALL_HIERARCHY'
@@ -42,14 +42,14 @@ export function gatherInputs(): Inputs {
   const token = getInputToken()
   const failOnError = getInputFailOnError()
   const considerErrorOnSeverities = getInputConsiderErrorOnSeverities()
-  const pullRequestCompareMode = getInputPullRequestCompareMode()
+  const pullRequestFilterMode = getInputPullRequestFilterMode()
   return {
     file,
     modes,
     token,
     failOnError,
     considerErrorOnSeverities,
-    pullRequestCompareMode
+    pullRequestFilterMode
   }
 }
 
@@ -131,22 +131,22 @@ function getInputConsiderErrorOnSeverities(): string[] {
   return uniqueResult
 }
 
-function getInputPullRequestCompareMode(): PullRequestCompareMode {
-  const input = core.getInput(Input.PR_COMPARE_MODE)
-  if (!Object.values<string>(PullRequestCompareMode).includes(input)) {
+function getInputPullRequestFilterMode(): PullRequestFilterMode {
+  const input = core.getInput(Input.PR_FILTER_MODE)
+  if (!Object.values<string>(PullRequestFilterMode).includes(input)) {
     throw new Error(
-      `Invalid ${Input.PR_COMPARE_MODE} '${input}' on input '${JSON.stringify(
+      `Invalid ${Input.PR_FILTER_MODE} '${input}' on input '${JSON.stringify(
         input
       )}'`
     )
   }
-  let compareMode = input as PullRequestCompareMode
+  let pullRequestFilterMode = input as PullRequestFilterMode
   const isPullRequest = extendedContext.isPullRequest()
-  if (compareMode !== PullRequestCompareMode.NONE && !isPullRequest) {
-    core.warning(NOT_IN_PR_CONTEXT_WARNING(compareMode))
-    compareMode = PullRequestCompareMode.NONE
+  if (pullRequestFilterMode !== PullRequestFilterMode.NONE && !isPullRequest) {
+    core.warning(NOT_IN_PR_CONTEXT_WARNING(pullRequestFilterMode))
+    pullRequestFilterMode = PullRequestFilterMode.NONE
   }
-  return compareMode
+  return pullRequestFilterMode
 }
 
 // Add methods for your extra inputs
