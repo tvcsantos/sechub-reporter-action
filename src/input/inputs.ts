@@ -7,6 +7,7 @@ export interface Inputs {
   token: string
   failOnError: boolean
   considerErrorOnSeverities: string[]
+  pullRequestFilterMode: PullRequestFilterMode
 }
 
 export enum Input {
@@ -14,7 +15,8 @@ export enum Input {
   MODES = 'modes',
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
-  CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities'
+  CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities',
+  PR_FILTER_MODE = 'pr-filter-mode'
 }
 
 export enum ModeOption {
@@ -28,13 +30,27 @@ export enum Severity {
   ALL = 'ALL'
 }
 
+export enum PullRequestFilterMode {
+  NONE = 'NONE',
+  ENTRY_POINT = 'ENTRY_POINT',
+  CALL_HIERARCHY = 'CALL_HIERARCHY'
+}
+
 export function gatherInputs(): Inputs {
   const file = getInputFile()
   const modes = getInputModes()
   const token = getInputToken()
   const failOnError = getInputFailOnError()
   const considerErrorOnSeverities = getInputConsiderErrorOnSeverities()
-  return { file, modes, token, failOnError, considerErrorOnSeverities }
+  const pullRequestFilterMode = getInputPullRequestFilterMode()
+  return {
+    file,
+    modes,
+    token,
+    failOnError,
+    considerErrorOnSeverities,
+    pullRequestFilterMode
+  }
 }
 
 function getInputFile(): string {
@@ -57,8 +73,9 @@ function internalGetInputModes(): ModeOption[] {
     })
 }
 
-const NOT_IN_PR_CONTEXT_WARNING =
-  "Selected 'pr-comment' mode but the action is not running in a pull request context. Ignoring this mode."
+const NOT_IN_PR_CONTEXT_WARNING = (mode: string): string => {
+  return `Selected '${mode}' mode but the action is not running in a pull request context. Ignoring this mode.`
+}
 const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK =
   "No additional mode selected, using 'check' mode."
 const SEVERITY_ALL_TAKES_PRECEDENCE_WARNING =
@@ -74,7 +91,7 @@ function getInputModes(): Set<ModeOption> {
     modes.add(ModeOption.CHECK)
   }
   if (modes.has(ModeOption.PR_COMMENT) && !isPullRequest) {
-    core.warning(NOT_IN_PR_CONTEXT_WARNING)
+    core.warning(NOT_IN_PR_CONTEXT_WARNING(ModeOption.PR_COMMENT))
     modes.delete(ModeOption.PR_COMMENT)
     if (modes.size <= 0) {
       core.warning(NO_ADDITIONAL_MODE_SELECTED_USE_CHECK)
@@ -112,6 +129,24 @@ function getInputConsiderErrorOnSeverities(): string[] {
     uniqueResult = [Severity.ALL]
   }
   return uniqueResult
+}
+
+function getInputPullRequestFilterMode(): PullRequestFilterMode {
+  const input = core.getInput(Input.PR_FILTER_MODE)
+  if (!Object.values<string>(PullRequestFilterMode).includes(input)) {
+    throw new Error(
+      `Invalid ${Input.PR_FILTER_MODE} '${input}' on input '${JSON.stringify(
+        input
+      )}'`
+    )
+  }
+  let pullRequestFilterMode = input as PullRequestFilterMode
+  const isPullRequest = extendedContext.isPullRequest()
+  if (pullRequestFilterMode !== PullRequestFilterMode.NONE && !isPullRequest) {
+    core.warning(NOT_IN_PR_CONTEXT_WARNING(pullRequestFilterMode))
+    pullRequestFilterMode = PullRequestFilterMode.NONE
+  }
+  return pullRequestFilterMode
 }
 
 // Add methods for your extra inputs

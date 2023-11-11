@@ -14,31 +14,28 @@ import fs from 'fs/promises'
 import { extendedContext } from '../github/extended-context'
 import { ReportResult } from '../model/report-result'
 import { SecHubReport } from '../model/sechub'
+import { ReportFindingsFilterFactory } from '../report/report-findings-filter-factory'
 
 const FILE_ENCODING = 'utf-8'
 
 export class ActionOrchestrator {
+  private octokit!: InstanceType<typeof GitHub>
   private gitHubCheck: GitHubCheck | null = null
-  private inputs?: Inputs
+  private inputs!: Inputs
 
   private getOctokit(): InstanceType<typeof GitHub> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-extra-non-null-assertion
-    return github.getOctokit(this.inputs!!.token)
+    return github.getOctokit(this.inputs.token)
   }
 
   private async getReporter(mode: ModeOption): Promise<Reporter> {
     switch (mode) {
       case ModeOption.PR_COMMENT:
         return new CommentReporter(
-          new GitHubPRCommenter(
-            APPLICATION_NAME,
-            this.getOctokit(),
-            extendedContext
-          )
+          new GitHubPRCommenter(APPLICATION_NAME, this.octokit, extendedContext)
         )
       case ModeOption.CHECK: {
         const gitHubCheckCreator = new GitHubCheckCreator(
-          this.getOctokit(),
+          this.octokit,
           extendedContext
         )
         this.gitHubCheck = await gitHubCheckCreator.create(CHECK_NAME)
@@ -50,8 +47,7 @@ export class ActionOrchestrator {
   }
 
   private async getReporters(): Promise<Reporter[]> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-extra-non-null-assertion
-    const modes = this.inputs!!.modes
+    const modes = this.inputs.modes
     const result: Reporter[] = []
     for (const mode of modes) {
       result.push(await this.getReporter(mode))
@@ -60,8 +56,7 @@ export class ActionOrchestrator {
   }
 
   private async parseReport(): Promise<SecHubReport> {
-    // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
-    const fileContents = await fs.readFile(this.inputs!!.file, {
+    const fileContents = await fs.readFile(this.inputs.file, {
       encoding: FILE_ENCODING
     })
     return JSON.parse(fileContents) as SecHubReport
@@ -71,7 +66,16 @@ export class ActionOrchestrator {
     reportData: SecHubReport,
     reporters: Reporter[]
   ): Promise<boolean> {
-    const reportGenerator = new SecHubReportGenerator(extendedContext)
+    const reportFindingsFilter = new ReportFindingsFilterFactory(
+      this.octokit,
+      extendedContext,
+      this.inputs
+    ).create()
+
+    const reportGenerator = new SecHubReportGenerator(
+      extendedContext,
+      reportFindingsFilter
+    )
     const reportResults = new Map<number | null, ReportResult>()
     let failed = false
 
@@ -81,8 +85,7 @@ export class ActionOrchestrator {
       if (reportResult === undefined) {
         reportResult = await reportGenerator.generateReport(reportData, {
           maxSize: reporter.maxSize ?? undefined,
-          // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
-          considerErrorOnSeverities: this.inputs!!.considerErrorOnSeverities
+          considerErrorOnSeverities: this.inputs.considerErrorOnSeverities
         })
         reportResults.set(reporter.maxSize, reportResult)
       }
@@ -97,6 +100,7 @@ export class ActionOrchestrator {
 
   async execute(inputs: Inputs): Promise<number> {
     this.inputs = inputs
+    this.octokit = this.getOctokit()
     const reporters = await this.getReporters()
     try {
       const report = await this.parseReport()

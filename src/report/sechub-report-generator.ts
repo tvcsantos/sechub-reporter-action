@@ -6,6 +6,7 @@ import { pre } from '../utils/utils'
 import { ReportProperties } from './report-properties'
 import { TextBuilder } from './text-builder'
 import { Severity } from '../input/inputs'
+import { ReportFindingsFilter } from './report-findings-filter'
 
 const HEADER = '| Severity | Type | Location | Relevant part | Source'
 const HEADER_ALIGNMENT = '|-|-|-|-|-|'
@@ -19,11 +20,10 @@ const CWE_LINK = (id: number): string =>
   `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`
 
 export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
-  private context: ExtendedContext
-
-  constructor(context: ExtendedContext) {
-    this.context = context
-  }
+  constructor(
+    private readonly context: ExtendedContext,
+    private readonly reportFindingsFilter: ReportFindingsFilter
+  ) {}
 
   private getLinkedLocation(secHubFinding: SecHubFinding): string {
     const location = [
@@ -118,7 +118,9 @@ export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
     reportData: SecHubReport,
     properties: ReportProperties
   ): Promise<ReportResult> {
-    const findings: SecHubFinding[] = reportData.result.findings ?? []
+    let findings: SecHubFinding[] = reportData.result.findings ?? []
+
+    findings = await this.reportFindingsFilter.filter(findings)
 
     if (findings.length <= 0) {
       return {

@@ -9676,20 +9676,21 @@ const core = __importStar(__nccwpck_require__(2186));
 const sechub_report_generator_1 = __nccwpck_require__(8900);
 const promises_1 = __importDefault(__nccwpck_require__(3292));
 const extended_context_1 = __nccwpck_require__(3634);
+const report_findings_filter_factory_1 = __nccwpck_require__(5724);
 const FILE_ENCODING = 'utf-8';
 class ActionOrchestrator {
+    octokit;
     gitHubCheck = null;
     inputs;
     getOctokit() {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-extra-non-null-assertion
         return github.getOctokit(this.inputs.token);
     }
     async getReporter(mode) {
         switch (mode) {
             case inputs_1.ModeOption.PR_COMMENT:
-                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.getOctokit(), extended_context_1.extendedContext));
+                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.octokit, extended_context_1.extendedContext));
             case inputs_1.ModeOption.CHECK: {
-                const gitHubCheckCreator = new check_1.GitHubCheckCreator(this.getOctokit(), extended_context_1.extendedContext);
+                const gitHubCheckCreator = new check_1.GitHubCheckCreator(this.octokit, extended_context_1.extendedContext);
                 this.gitHubCheck = await gitHubCheckCreator.create(constants_1.CHECK_NAME);
                 return new check_reporter_1.CheckReporter(this.gitHubCheck);
             }
@@ -9698,7 +9699,6 @@ class ActionOrchestrator {
         }
     }
     async getReporters() {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-extra-non-null-assertion
         const modes = this.inputs.modes;
         const result = [];
         for (const mode of modes) {
@@ -9707,14 +9707,14 @@ class ActionOrchestrator {
         return result;
     }
     async parseReport() {
-        // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
         const fileContents = await promises_1.default.readFile(this.inputs.file, {
             encoding: FILE_ENCODING
         });
         return JSON.parse(fileContents);
     }
     async doReports(reportData, reporters) {
-        const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(extended_context_1.extendedContext);
+        const reportFindingsFilter = new report_findings_filter_factory_1.ReportFindingsFilterFactory(this.octokit, extended_context_1.extendedContext, this.inputs).create();
+        const reportGenerator = new sechub_report_generator_1.SecHubReportGenerator(extended_context_1.extendedContext, reportFindingsFilter);
         const reportResults = new Map();
         let failed = false;
         for (const reporter of reporters) {
@@ -9722,7 +9722,6 @@ class ActionOrchestrator {
             if (reportResult === undefined) {
                 reportResult = await reportGenerator.generateReport(reportData, {
                     maxSize: reporter.maxSize ?? undefined,
-                    // eslint-disable-next-line @typescript-eslint/no-extra-non-null-assertion,@typescript-eslint/no-non-null-assertion
                     considerErrorOnSeverities: this.inputs.considerErrorOnSeverities
                 });
                 reportResults.set(reporter.maxSize, reportResult);
@@ -9734,6 +9733,7 @@ class ActionOrchestrator {
     }
     async execute(inputs) {
         this.inputs = inputs;
+        this.octokit = this.getOctokit();
         const reporters = await this.getReporters();
         try {
             const report = await this.parseReport();
@@ -10107,7 +10107,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.gatherInputs = exports.Severity = exports.ModeOption = exports.Input = void 0;
+exports.gatherInputs = exports.PullRequestFilterMode = exports.Severity = exports.ModeOption = exports.Input = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const extended_context_1 = __nccwpck_require__(3634);
 var Input;
@@ -10117,6 +10117,7 @@ var Input;
     Input["GITHUB_TOKEN"] = "token";
     Input["FAIL_ON_ERROR"] = "fail-on-error";
     Input["CONSIDER_ERROR_ON_SEVERITIES"] = "consider-error-on-severities";
+    Input["PR_FILTER_MODE"] = "pr-filter-mode";
 })(Input || (exports.Input = Input = {}));
 var ModeOption;
 (function (ModeOption) {
@@ -10129,13 +10130,27 @@ var Severity;
     Severity["NONE"] = "NONE";
     Severity["ALL"] = "ALL";
 })(Severity || (exports.Severity = Severity = {}));
+var PullRequestFilterMode;
+(function (PullRequestFilterMode) {
+    PullRequestFilterMode["NONE"] = "NONE";
+    PullRequestFilterMode["ENTRY_POINT"] = "ENTRY_POINT";
+    PullRequestFilterMode["CALL_HIERARCHY"] = "CALL_HIERARCHY";
+})(PullRequestFilterMode || (exports.PullRequestFilterMode = PullRequestFilterMode = {}));
 function gatherInputs() {
     const file = getInputFile();
     const modes = getInputModes();
     const token = getInputToken();
     const failOnError = getInputFailOnError();
     const considerErrorOnSeverities = getInputConsiderErrorOnSeverities();
-    return { file, modes, token, failOnError, considerErrorOnSeverities };
+    const pullRequestFilterMode = getInputPullRequestFilterMode();
+    return {
+        file,
+        modes,
+        token,
+        failOnError,
+        considerErrorOnSeverities,
+        pullRequestFilterMode
+    };
 }
 exports.gatherInputs = gatherInputs;
 function getInputFile() {
@@ -10152,7 +10167,9 @@ function internalGetInputModes() {
         return x;
     });
 }
-const NOT_IN_PR_CONTEXT_WARNING = "Selected 'pr-comment' mode but the action is not running in a pull request context. Ignoring this mode.";
+const NOT_IN_PR_CONTEXT_WARNING = (mode) => {
+    return `Selected '${mode}' mode but the action is not running in a pull request context. Ignoring this mode.`;
+};
 const NO_ADDITIONAL_MODE_SELECTED_USE_CHECK = "No additional mode selected, using 'check' mode.";
 const SEVERITY_ALL_TAKES_PRECEDENCE_WARNING = "Selected 'ALL' on fail-on-severities with other finer grained severities. Severity 'ALL' takes precedence.";
 function getInputModes() {
@@ -10165,7 +10182,7 @@ function getInputModes() {
         modes.add(ModeOption.CHECK);
     }
     if (modes.has(ModeOption.PR_COMMENT) && !isPullRequest) {
-        core.warning(NOT_IN_PR_CONTEXT_WARNING);
+        core.warning(NOT_IN_PR_CONTEXT_WARNING(ModeOption.PR_COMMENT));
         modes.delete(ModeOption.PR_COMMENT);
         if (modes.size <= 0) {
             core.warning(NO_ADDITIONAL_MODE_SELECTED_USE_CHECK);
@@ -10192,6 +10209,19 @@ function getInputConsiderErrorOnSeverities() {
         uniqueResult = [Severity.ALL];
     }
     return uniqueResult;
+}
+function getInputPullRequestFilterMode() {
+    const input = core.getInput(Input.PR_FILTER_MODE);
+    if (!Object.values(PullRequestFilterMode).includes(input)) {
+        throw new Error(`Invalid ${Input.PR_FILTER_MODE} '${input}' on input '${JSON.stringify(input)}'`);
+    }
+    let pullRequestFilterMode = input;
+    const isPullRequest = extended_context_1.extendedContext.isPullRequest();
+    if (pullRequestFilterMode !== PullRequestFilterMode.NONE && !isPullRequest) {
+        core.warning(NOT_IN_PR_CONTEXT_WARNING(pullRequestFilterMode));
+        pullRequestFilterMode = PullRequestFilterMode.NONE;
+    }
+    return pullRequestFilterMode;
 }
 // Add methods for your extra inputs
 // Pattern: function getInput<input-name>(): <type>
@@ -10258,6 +10288,111 @@ exports.CommentReporter = CommentReporter;
 
 /***/ }),
 
+/***/ 3226:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NoOpReportFindingsFilter = void 0;
+class NoOpReportFindingsFilter {
+    async filter(findings) {
+        return findings;
+    }
+    static instance;
+    static getInstance() {
+        if (!NoOpReportFindingsFilter.instance) {
+            NoOpReportFindingsFilter.instance = new NoOpReportFindingsFilter();
+        }
+        return NoOpReportFindingsFilter.instance;
+    }
+}
+exports.NoOpReportFindingsFilter = NoOpReportFindingsFilter;
+
+
+/***/ }),
+
+/***/ 1520:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PullRequestReportFindingsFilter = void 0;
+const inputs_1 = __nccwpck_require__(8767);
+class PullRequestReportFindingsFilter {
+    octokit;
+    context;
+    pullRequestFilterMode;
+    constructor(octokit, context, pullRequestFilterMode) {
+        this.octokit = octokit;
+        this.context = context;
+        this.pullRequestFilterMode = pullRequestFilterMode;
+    }
+    async filter(findings) {
+        if (this.pullRequestFilterMode === inputs_1.PullRequestFilterMode.NONE)
+            return findings;
+        const { data } = await this.octokit.rest.pulls.listFiles({
+            ...this.context.repo,
+            pull_number: this.context.issue.number
+        });
+        const filenames = data.map(file => file.filename);
+        return findings.filter(finding => this.findingHasReferenceToAnyFilename(finding, filenames));
+    }
+    findingHasReferenceToAnyFilename(finding, filenames) {
+        return filenames.some(filename => this.findingHasReferenceToFilename(finding.code, filename));
+    }
+    findingHasReferenceToFilename(codeFinding, filename) {
+        let currentCodeFinding = codeFinding;
+        let found = false;
+        do {
+            found = currentCodeFinding.location === filename;
+            switch (this.pullRequestFilterMode) {
+                case inputs_1.PullRequestFilterMode.ENTRY_POINT:
+                    currentCodeFinding = undefined;
+                    break;
+                case inputs_1.PullRequestFilterMode.CALL_HIERARCHY:
+                    currentCodeFinding = currentCodeFinding.calls;
+                    break;
+            }
+        } while (!found && currentCodeFinding !== undefined);
+        return found;
+    }
+}
+exports.PullRequestReportFindingsFilter = PullRequestReportFindingsFilter;
+
+
+/***/ }),
+
+/***/ 5724:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ReportFindingsFilterFactory = void 0;
+const pull_request_report_findings_filter_1 = __nccwpck_require__(1520);
+const no_op_report_findings_filter_1 = __nccwpck_require__(3226);
+class ReportFindingsFilterFactory {
+    octokit;
+    context;
+    inputs;
+    constructor(octokit, context, inputs) {
+        this.octokit = octokit;
+        this.context = context;
+        this.inputs = inputs;
+    }
+    create() {
+        if (this.context.isPullRequest())
+            return new pull_request_report_findings_filter_1.PullRequestReportFindingsFilter(this.octokit, this.context, this.inputs.pullRequestFilterMode);
+        return no_op_report_findings_filter_1.NoOpReportFindingsFilter.getInstance();
+    }
+}
+exports.ReportFindingsFilterFactory = ReportFindingsFilterFactory;
+
+
+/***/ }),
+
 /***/ 8900:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -10275,8 +10410,10 @@ const FAIL_COMMENT = (fail) => `# ${fail ? ':x:' : ':warning:'} SecHub - We dete
 const CWE_LINK = (id) => `[CWE&#8209;${id}](https://cwe.mitre.org/data/definitions/${id}.html)`;
 class SecHubReportGenerator {
     context;
-    constructor(context) {
+    reportFindingsFilter;
+    constructor(context, reportFindingsFilter) {
         this.context = context;
+        this.reportFindingsFilter = reportFindingsFilter;
     }
     getLinkedLocation(secHubFinding) {
         const location = [
@@ -10345,7 +10482,8 @@ class SecHubReportGenerator {
         return isContentTruncated;
     }
     async generateReport(reportData, properties) {
-        const findings = reportData.result.findings ?? [];
+        let findings = reportData.result.findings ?? [];
+        findings = await this.reportFindingsFilter.filter(findings);
         if (findings.length <= 0) {
             return {
                 report: SUCCESS_COMMENT,
