@@ -38,8 +38,8 @@ inputs:
     description: |-
       Compare mode for the report in PR context. The following values are supported:
       - NONE - no comparison will be done
-      - ENTRY_POINT - compare with the previous report on entry point level
-      - CALL_HIERARCHY - compare with the previous report taking into account call hierarchy
+      - ENTRY_POINT - compare on entry point level
+      - CALL_HIERARCHY - compare taking into account call hierarchy
     default: NONE
 runs:
   using: 'node16'
