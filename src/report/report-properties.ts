@@ -1,7 +1,7 @@
-import { CompareMode } from '../input/inputs'
+import { PullRequestCompareMode } from '../input/inputs'
 
 export interface ReportProperties {
   maxSize?: number
   considerErrorOnSeverities: string[]
-  compareMode: CompareMode
+  pullRequestCompareMode: PullRequestCompareMode
 }

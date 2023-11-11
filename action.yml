@@ -33,10 +33,10 @@ inputs:
       - NONE - if you don't want to consider any severity as error
       - ALL - if you want to consider on all severities as errors
     default: ALL
-  compare-mode:
+  pr-compare-mode:
     required: false
     description: |-
-      Compare mode for the report. The following values are supported:
+      Compare mode for the report in PR context. The following values are supported:
       - NONE - no comparison will be done
       - ENTRY_POINT - compare with the previous report on entry point level
       - CALL_HIERARCHY - compare with the previous report taking into account call hierarchy

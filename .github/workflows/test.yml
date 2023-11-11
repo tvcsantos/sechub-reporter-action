@@ -56,5 +56,5 @@ jobs:
           modes: summary
           fail-on-error: ${{ matrix.fail-on-error }}
           consider-error-on-severities: ${{ matrix.consider-error-on-severities }}
-          compare-mode: ${{ matrix.compare-mode }}
+          pr-compare-mode: ${{ matrix.compare-mode }}
         continue-on-error: true

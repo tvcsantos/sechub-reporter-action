@@ -120,10 +120,7 @@ export class SecHubReportGenerator implements ReportGenerator<SecHubReport> {
   ): Promise<ReportResult> {
     let findings: SecHubFinding[] = reportData.result.findings ?? []
 
-    findings = await this.reportFindingsFilter.filter(
-      findings,
-      properties.compareMode
-    )
+    findings = await this.reportFindingsFilter.filter(findings)
 
     if (findings.length <= 0) {
       return {

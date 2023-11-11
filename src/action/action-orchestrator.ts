@@ -14,11 +14,12 @@ import fs from 'fs/promises'
 import { extendedContext } from '../github/extended-context'
 import { ReportResult } from '../model/report-result'
 import { SecHubReport } from '../model/sechub'
-import { ReportFindingsFilter } from '../report/report-findings-filter'
+import { ReportFindingsFilterFactory } from '../report/report-findings-filter-factory'
 
 const FILE_ENCODING = 'utf-8'
 
 export class ActionOrchestrator {
+  private octokit!: InstanceType<typeof GitHub>
   private gitHubCheck: GitHubCheck | null = null
   private inputs!: Inputs
 
@@ -30,15 +31,11 @@ export class ActionOrchestrator {
     switch (mode) {
       case ModeOption.PR_COMMENT:
         return new CommentReporter(
-          new GitHubPRCommenter(
-            APPLICATION_NAME,
-            this.getOctokit(),
-            extendedContext
-          )
+          new GitHubPRCommenter(APPLICATION_NAME, this.octokit, extendedContext)
         )
       case ModeOption.CHECK: {
         const gitHubCheckCreator = new GitHubCheckCreator(
-          this.getOctokit(),
+          this.octokit,
           extendedContext
         )
         this.gitHubCheck = await gitHubCheckCreator.create(CHECK_NAME)
@@ -69,10 +66,12 @@ export class ActionOrchestrator {
     reportData: SecHubReport,
     reporters: Reporter[]
   ): Promise<boolean> {
-    const reportFindingsFilter = new ReportFindingsFilter(
-      this.getOctokit(),
-      extendedContext
-    )
+    const reportFindingsFilter = new ReportFindingsFilterFactory(
+      this.octokit,
+      extendedContext,
+      this.inputs
+    ).create()
+
     const reportGenerator = new SecHubReportGenerator(
       extendedContext,
       reportFindingsFilter
@@ -87,7 +86,7 @@ export class ActionOrchestrator {
         reportResult = await reportGenerator.generateReport(reportData, {
           maxSize: reporter.maxSize ?? undefined,
           considerErrorOnSeverities: this.inputs.considerErrorOnSeverities,
-          compareMode: this.inputs.compareMode
+          pullRequestCompareMode: this.inputs.pullRequestCompareMode
         })
         reportResults.set(reporter.maxSize, reportResult)
       }
@@ -102,6 +101,7 @@ export class ActionOrchestrator {
 
   async execute(inputs: Inputs): Promise<number> {
     this.inputs = inputs
+    this.octokit = this.getOctokit()
     const reporters = await this.getReporters()
     try {
       const report = await this.parseReport()

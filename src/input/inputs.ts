@@ -7,7 +7,7 @@ export interface Inputs {
   token: string
   failOnError: boolean
   considerErrorOnSeverities: string[]
-  compareMode: CompareMode
+  pullRequestCompareMode: PullRequestCompareMode
 }
 
 export enum Input {
@@ -16,7 +16,7 @@ export enum Input {
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
   CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities',
-  COMPARE_MODE = 'compare-mode'
+  PR_COMPARE_MODE = 'pr-compare-mode'
 }
 
 export enum ModeOption {
@@ -30,7 +30,7 @@ export enum Severity {
   ALL = 'ALL'
 }
 
-export enum CompareMode {
+export enum PullRequestCompareMode {
   NONE = 'NONE',
   ENTRY_POINT = 'ENTRY_POINT',
   CALL_HIERARCHY = 'CALL_HIERARCHY'
@@ -42,14 +42,14 @@ export function gatherInputs(): Inputs {
   const token = getInputToken()
   const failOnError = getInputFailOnError()
   const considerErrorOnSeverities = getInputConsiderErrorOnSeverities()
-  const compareMode = getInputCompareMode()
+  const pullRequestCompareMode = getInputPullRequestCompareMode()
   return {
     file,
     modes,
     token,
     failOnError,
     considerErrorOnSeverities,
-    compareMode
+    pullRequestCompareMode
   }
 }
 
@@ -131,20 +131,20 @@ function getInputConsiderErrorOnSeverities(): string[] {
   return uniqueResult
 }
 
-function getInputCompareMode(): CompareMode {
-  const input = core.getInput(Input.COMPARE_MODE)
-  if (!Object.values<string>(CompareMode).includes(input)) {
+function getInputPullRequestCompareMode(): PullRequestCompareMode {
+  const input = core.getInput(Input.PR_COMPARE_MODE)
+  if (!Object.values<string>(PullRequestCompareMode).includes(input)) {
     throw new Error(
-      `Invalid ${Input.COMPARE_MODE} '${input}' on input '${JSON.stringify(
+      `Invalid ${Input.PR_COMPARE_MODE} '${input}' on input '${JSON.stringify(
         input
       )}'`
     )
   }
-  let compareMode = input as CompareMode
+  let compareMode = input as PullRequestCompareMode
   const isPullRequest = extendedContext.isPullRequest()
-  if (compareMode !== CompareMode.NONE && !isPullRequest) {
+  if (compareMode !== PullRequestCompareMode.NONE && !isPullRequest) {
     core.warning(NOT_IN_PR_CONTEXT_WARNING(compareMode))
-    compareMode = CompareMode.NONE
+    compareMode = PullRequestCompareMode.NONE
   }
   return compareMode
 }
