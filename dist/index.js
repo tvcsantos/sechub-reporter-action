@@ -9939,6 +9939,8 @@ class GitHubPRCommenter {
             const firstLine = comment.body?.split('\r\n')[0];
             if (firstLine === this.commentPreface) {
                 core.debug(`Existing comment from ${this.applicationName} found. Attempting to delete it...`);
+                // This can be async, we don't need to wait for it
+                // noinspection ES6MissingAwait
                 this.octokit.rest.issues.deleteComment({
                     comment_id: comment.id,
                     owner: contextOwner,
@@ -9947,7 +9949,7 @@ class GitHubPRCommenter {
             }
         }
         core.debug('Creating a new comment...');
-        this.octokit.rest.issues.createComment({
+        await this.octokit.rest.issues.createComment({
             issue_number: contextIssue,
             owner: contextOwner,
             repo: contextRepo,
