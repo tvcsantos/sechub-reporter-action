@@ -14,6 +14,7 @@ jobs:
       matrix:
         modes: [pr-comment, check, summary]
         file: [sechub-result-error.json, sechub-result-ok.json]
+        comment-pr-on-success: [true, false]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -23,6 +24,7 @@ jobs:
         with:
           file: ./__tests__/${{ matrix.file }}
           modes: ${{ matrix.modes }}
+          comment-pr-on-success: ${{ matrix.comment-pr-on-success }}
   test-multi-mode:
     strategy:
       matrix:

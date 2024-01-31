@@ -9685,10 +9685,10 @@ class ActionOrchestrator {
     getOctokit() {
         return github.getOctokit(this.inputs.token);
     }
-    async getReporter(mode) {
+    async getReporter(mode, commentPrOnSuccess) {
         switch (mode) {
             case inputs_1.ModeOption.PR_COMMENT:
-                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.octokit, extended_context_1.extendedContext));
+                return new comment_reporter_1.CommentReporter(new comment_1.GitHubPRCommenter(constants_1.APPLICATION_NAME, this.octokit, extended_context_1.extendedContext), commentPrOnSuccess);
             case inputs_1.ModeOption.CHECK: {
                 const gitHubCheckCreator = new check_1.GitHubCheckCreator(this.octokit, extended_context_1.extendedContext);
                 this.gitHubCheck = await gitHubCheckCreator.create(constants_1.CHECK_NAME);
@@ -9700,9 +9700,10 @@ class ActionOrchestrator {
     }
     async getReporters() {
         const modes = this.inputs.modes;
+        const commentPrOnSuccess = this.inputs.commentPrOnSuccess;
         const result = [];
         for (const mode of modes) {
-            result.push(await this.getReporter(mode));
+            result.push(await this.getReporter(mode, commentPrOnSuccess));
         }
         return result;
     }
@@ -9918,6 +9919,9 @@ class GitHubPRCommenter {
         this.applicationName = applicationName;
         this.octokit = octokit;
         this.context = context;
+        this.applicationName = applicationName;
+        this.octokit = octokit;
+        this.context = context;
         this.commentPreface = getCommentPreface(applicationName);
     }
     async comment(data) {
@@ -9935,6 +9939,8 @@ class GitHubPRCommenter {
             const firstLine = comment.body?.split('\r\n')[0];
             if (firstLine === this.commentPreface) {
                 core.debug(`Existing comment from ${this.applicationName} found. Attempting to delete it...`);
+                // This can be async, we don't need to wait for it
+                // noinspection ES6MissingAwait
                 this.octokit.rest.issues.deleteComment({
                     comment_id: comment.id,
                     owner: contextOwner,
@@ -9943,7 +9949,7 @@ class GitHubPRCommenter {
             }
         }
         core.debug('Creating a new comment...');
-        this.octokit.rest.issues.createComment({
+        await this.octokit.rest.issues.createComment({
             issue_number: contextIssue,
             owner: contextOwner,
             repo: contextRepo,
@@ -10118,6 +10124,7 @@ var Input;
     Input["FAIL_ON_ERROR"] = "fail-on-error";
     Input["CONSIDER_ERROR_ON_SEVERITIES"] = "consider-error-on-severities";
     Input["PR_FILTER_MODE"] = "pr-filter-mode";
+    Input["COMMENT_PR_ON_SUCCESS"] = "comment-pr-on-success";
 })(Input || (exports.Input = Input = {}));
 var ModeOption;
 (function (ModeOption) {
@@ -10143,13 +10150,15 @@ function gatherInputs() {
     const failOnError = getInputFailOnError();
     const considerErrorOnSeverities = getInputConsiderErrorOnSeverities();
     const pullRequestFilterMode = getInputPullRequestFilterMode();
+    const commentPrOnSuccess = getInputCommentPrOnSuccess();
     return {
         file,
         modes,
         token,
         failOnError,
         considerErrorOnSeverities,
-        pullRequestFilterMode
+        pullRequestFilterMode,
+        commentPrOnSuccess
     };
 }
 exports.gatherInputs = gatherInputs;
@@ -10223,6 +10232,12 @@ function getInputPullRequestFilterMode() {
     }
     return pullRequestFilterMode;
 }
+function getInputCommentPrOnSuccess() {
+    const input = core.getInput(Input.COMMENT_PR_ON_SUCCESS)?.toLowerCase();
+    if (!input)
+        return true;
+    return input === 'true';
+}
 // Add methods for your extra inputs
 // Pattern: function getInput<input-name>(): <type>
 
@@ -10241,6 +10256,7 @@ const SUCCESS_SUMMARY = 'SecHub - No findings detected on your code base!';
 const REPORT_CONTENT_TRUNCATED = '**Note: Report truncated due to character limit constraints!**';
 const MAX_CHECK_BODY_SIZE = 65535;
 class CheckReporter {
+    gitHubCheck;
     maxSize = MAX_CHECK_BODY_SIZE;
     static getSummary(summary, truncated) {
         const result = truncated
@@ -10248,7 +10264,6 @@ class CheckReporter {
             : [summary];
         return result.join('\n');
     }
-    gitHubCheck;
     constructor(gitHubCheck) {
         this.gitHubCheck = gitHubCheck;
     }
@@ -10274,13 +10289,17 @@ exports.CheckReporter = CheckReporter;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentReporter = void 0;
 class CommentReporter {
-    maxSize = null;
     gitHubPRCommenter;
-    constructor(gitHubPRCommenter) {
+    commentOnSuccess;
+    maxSize = null;
+    constructor(gitHubPRCommenter, commentOnSuccess) {
         this.gitHubPRCommenter = gitHubPRCommenter;
+        this.commentOnSuccess = commentOnSuccess;
     }
     async report(data) {
-        await this.gitHubPRCommenter.comment(data.report);
+        if (data.failed || this.commentOnSuccess) {
+            await this.gitHubPRCommenter.comment(data.report);
+        }
     }
 }
 exports.CommentReporter = CommentReporter;
@@ -10523,8 +10542,8 @@ exports.SecHubReportGenerator = SecHubReportGenerator;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SummaryReporter = void 0;
 class SummaryReporter {
-    maxSize = null;
     theSummary;
+    maxSize = null;
     constructor(theSummary) {
         this.theSummary = theSummary;
     }

@@ -27,11 +27,19 @@ export class ActionOrchestrator {
     return github.getOctokit(this.inputs.token)
   }
 
-  private async getReporter(mode: ModeOption): Promise<Reporter> {
+  private async getReporter(
+    mode: ModeOption,
+    commentPrOnSuccess: boolean
+  ): Promise<Reporter> {
     switch (mode) {
       case ModeOption.PR_COMMENT:
         return new CommentReporter(
-          new GitHubPRCommenter(APPLICATION_NAME, this.octokit, extendedContext)
+          new GitHubPRCommenter(
+            APPLICATION_NAME,
+            this.octokit,
+            extendedContext
+          ),
+          commentPrOnSuccess
         )
       case ModeOption.CHECK: {
         const gitHubCheckCreator = new GitHubCheckCreator(
@@ -48,9 +56,10 @@ export class ActionOrchestrator {
 
   private async getReporters(): Promise<Reporter[]> {
     const modes = this.inputs.modes
+    const commentPrOnSuccess = this.inputs.commentPrOnSuccess
     const result: Reporter[] = []
     for (const mode of modes) {
-      result.push(await this.getReporter(mode))
+      result.push(await this.getReporter(mode, commentPrOnSuccess))
     }
     return result
   }
