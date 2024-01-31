@@ -9919,9 +9919,6 @@ class GitHubPRCommenter {
         this.applicationName = applicationName;
         this.octokit = octokit;
         this.context = context;
-        this.applicationName = applicationName;
-        this.octokit = octokit;
-        this.context = context;
         this.commentPreface = getCommentPreface(applicationName);
     }
     async comment(data) {

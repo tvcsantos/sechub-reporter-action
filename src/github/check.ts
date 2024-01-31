@@ -40,22 +40,12 @@ export class GitHubCheckCreator {
 }
 
 export class GitHubCheck {
-  private readonly octokit: InstanceType<typeof GitHub>
-  private readonly context: Context
-  private readonly checkName: string
-  private readonly checkRunId: number
-
   constructor(
-    octokit: InstanceType<typeof GitHub>,
-    context: Context,
-    checkName: string,
-    checkRunId: number
-  ) {
-    this.octokit = octokit
-    this.context = context
-    this.checkName = checkName
-    this.checkRunId = checkRunId
-  }
+    private readonly octokit: InstanceType<typeof GitHub>,
+    private readonly context: Context,
+    private readonly checkName: string,
+    private readonly checkRunId: number
+  ) {}
 
   async pass(summary: string, text: string): Promise<void> {
     return this.finish('success', summary, text)

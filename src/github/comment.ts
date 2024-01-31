@@ -14,9 +14,6 @@ export class GitHubPRCommenter {
     private readonly octokit: InstanceType<typeof GitHub>,
     private readonly context: Context
   ) {
-    this.applicationName = applicationName
-    this.octokit = octokit
-    this.context = context
     this.commentPreface = getCommentPreface(applicationName)
   }
 
