@@ -4,13 +4,10 @@ import { Context } from '@actions/github/lib/context'
 import { ExtendedContext } from './extended-context'
 
 export class GitHubCheckCreator {
-  private readonly octokit: InstanceType<typeof GitHub>
-  private readonly context: ExtendedContext
-
-  constructor(octokit: InstanceType<typeof GitHub>, context: ExtendedContext) {
-    this.octokit = octokit
-    this.context = context
-  }
+  constructor(
+    private readonly octokit: InstanceType<typeof GitHub>,
+    private readonly context: ExtendedContext
+  ) {}
 
   async create(name: string): Promise<GitHubCheck> {
     const head_sha = this.context.getSha()

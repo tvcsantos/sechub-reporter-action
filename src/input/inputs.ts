@@ -8,6 +8,7 @@ export interface Inputs {
   failOnError: boolean
   considerErrorOnSeverities: string[]
   pullRequestFilterMode: PullRequestFilterMode
+  commentPrOnSuccess: boolean
 }
 
 export enum Input {
@@ -16,7 +17,8 @@ export enum Input {
   GITHUB_TOKEN = 'token',
   FAIL_ON_ERROR = 'fail-on-error',
   CONSIDER_ERROR_ON_SEVERITIES = 'consider-error-on-severities',
-  PR_FILTER_MODE = 'pr-filter-mode'
+  PR_FILTER_MODE = 'pr-filter-mode',
+  COMMENT_PR_ON_SUCCESS = 'comment-pr-on-success'
 }
 
 export enum ModeOption {
@@ -43,13 +45,15 @@ export function gatherInputs(): Inputs {
   const failOnError = getInputFailOnError()
   const considerErrorOnSeverities = getInputConsiderErrorOnSeverities()
   const pullRequestFilterMode = getInputPullRequestFilterMode()
+  const commentPrOnSuccess = getInputCommentPrOnSuccess()
   return {
     file,
     modes,
     token,
     failOnError,
     considerErrorOnSeverities,
-    pullRequestFilterMode
+    pullRequestFilterMode,
+    commentPrOnSuccess
   }
 }
 
@@ -147,6 +151,12 @@ function getInputPullRequestFilterMode(): PullRequestFilterMode {
     pullRequestFilterMode = PullRequestFilterMode.NONE
   }
   return pullRequestFilterMode
+}
+
+function getInputCommentPrOnSuccess(): boolean {
+  const input = core.getInput(Input.COMMENT_PR_ON_SUCCESS)?.toLowerCase()
+  if (!input) return true
+  return input === 'true'
 }
 
 // Add methods for your extra inputs

@@ -7,15 +7,12 @@ function getCommentPreface(id: string): string {
 }
 
 export class GitHubPRCommenter {
-  private readonly applicationName: string
-  private readonly octokit: InstanceType<typeof GitHub>
-  private readonly context: Context
   private readonly commentPreface: string
 
   constructor(
-    applicationName: string,
-    octokit: InstanceType<typeof GitHub>,
-    context: Context
+    private readonly applicationName: string,
+    private readonly octokit: InstanceType<typeof GitHub>,
+    private readonly context: Context
   ) {
     this.applicationName = applicationName
     this.octokit = octokit
