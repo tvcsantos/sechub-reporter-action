@@ -52,7 +52,7 @@ When running in `summary` mode a summary will be created with the following if n
 
 ![summary-ok](docs/images/summary_ok_example.png)
 
-And in case of errors with the following 
+And in case of errors with the following
 
 ![summary-error](docs/images/summary_error_example.png)
 
@@ -81,6 +81,8 @@ jobs:
 
 ### Inputs
 
+<!-- markdownlint-disable MD033 -->
+
 | Input                          | Type           | Required | Default Value                                                                                 | Description                                                                                                                                                                                                                                                                                                       |
 |--------------------------------|----------------|----------|-----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `consider-error-on-severities` | List\<String\> | No       | `NONE`                                                                                        | Consider the following severities as errors for this action. In addition to the severities supported by SecHub we have the following special values: <ul><li>`NONE` - if you don't want to consider any severity as error</li><li>`ALL` - if you want to consider on all severities as errors</li></ul>           |
@@ -90,6 +92,8 @@ jobs:
 | `token`                        | Token          | No       | `${{ github.token }}`                                                                         | Your GitHub token.                                                                                                                                                                                                                                                                                                |
 | `pr-filter-mode`               | Enum           | No       | `NONE`                                                                                        | Filter mode for report findings in PR context. The following values are supported: <ul><li>`NONE` - all findings will be reported</li><li>`ENTRY_POINT` - findings will be filtered based on matching entry point</li><li>`CALL_HIERARCHY` - findings will be filtered based on matching call hierarchy</li></ul> |
 | `comment-pr-on-success`        | Boolean        | No       | `true`                                                                                        | Comment on PR even if there are no findings.                                                                                                                                                                                                                                                                      |
+
+<!-- markdownlint-enable MD033 -->
 
 ### Outputs
 

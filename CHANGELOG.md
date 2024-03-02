@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `pr-filter-mode` input for filtering report findings in PRs 
+- Add `pr-filter-mode` input for filtering report findings in PRs
 
 ## [3.0.0] - 2023-09-19
 
@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `fail-on-severities` input for failing the action based on severities 
+- Add `fail-on-severities` input for failing the action based on severities
 
 ## [1.4.1] - 2023-09-19
 
