@@ -11,6 +11,7 @@ This action aims to provide support for generating reports for [SecHub][sechub],
 different security tools.
 
 Several output modes are supported depending on the user input and if the action is run on a pull request:
+
 - `pr-comment` - report will be added as a comment on PR.
 - `check` - report will be added in a GitHub check.
 - `summary` - report will be added as a summary.
@@ -73,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Do SecHub report
-        uses: tvcsantos/sechub-reporter-action@v1
+        uses: tvcsantos/sechub-reporter-action@v4
         with:
           file: /path/to/sechub/results/file.json
 ```
