@@ -2,8 +2,8 @@ name: 'SecHub reporter'
 description: 'Make a report for SecHub results'
 
 branding:
-  icon: settings
-  color: blue
+  icon: 'settings'
+  color: 'blue'
 
 inputs:
   file:
@@ -46,5 +46,5 @@ inputs:
     description: Comment on PR even if there are no findings
     default: 'true'
 runs:
-  using: 'node16'
-  main: 'dist/index.js'
+  using: node20
+  main: dist/index.js
